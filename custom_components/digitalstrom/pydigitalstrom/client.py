@@ -20,8 +20,8 @@ class DSClient(DSRequestHandler):
     URL_SCENES = (
         "/json/property/query2?query=/apartment/zones/*(*)/" "groups/*(*)"
     )
-    URL_REACHABLE_SCENES = "json/zone/getReachableScenes?id={zoneId}&groupID={groupId}"
-    URL_SCENE_GETNAME = "json/zone/sceneGetName?id={zoneId}&groupID={groupId}&sceneNumber={scene}"
+    URL_REACHABLE_SCENES = "/json/zone/getReachableScenes?id={zoneId}&groupID={groupId}"
+    URL_SCENE_GETNAME = "/json/zone/sceneGetName?id={zoneId}&groupID={groupId}&sceneNumber={scene}"
 
     URL_EVENT_SUBSCRIBE = "/json/event/subscribe?name={name}&" "subscriptionID={id}"
     URL_EVENT_UNSUBSCRIBE = "/json/event/unsubscribe?name={name}&" "subscriptionID={id}"
@@ -137,7 +137,7 @@ class DSClient(DSRequestHandler):
                     raise DSCommandFailedException("no result in server response")
                 result_rs = response_rs["result"]
 
-                _LOGGER.debug("adding {count} reachable scenes".format(len(result_rs)))
+                _LOGGER.debug("adding {count} reachable scenes".format(count=len(result_rs)))
                 for reachable_scene in result_rs["reachableScenes"]:
                     scene_id = reachable_scene
                     scene_name = ALL_SCENES_BYID[scene_id]
