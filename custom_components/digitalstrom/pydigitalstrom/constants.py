@@ -31,7 +31,7 @@ SCENES = {
         "SCENE_PRESET43": 30,
         "SCENE_PRESET44": 31
     },
-    "STEPPIING": {
+    "STEPPING": {
         "SCENE_DECREMENT": 11,
         "SCENE_INCREMENT": 12,
     },

@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 import time
+import logging
 
 import aiohttp
 import asyncio
@@ -11,6 +12,8 @@ from .exceptions import (
     DSRequestException,
 )
 from .requesthandler import DSRequestHandler
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class DSClient(DSRequestHandler):
@@ -100,6 +103,8 @@ class DSClient(DSRequestHandler):
             # add generic zone scenes
             for scene_name, scene_id in SCENES["GROUP_INDIPENDENT"].items():
                 id = "{zone_id}_{scene_id}".format(zone_id=zone_id, scene_id=scene_id)
+                
+                _LOGGER.debug("adding DSScene for {id}")
                 self._scenes[id] = DSScene(
                     client=self,
                     zone_id=zone_id,
@@ -121,10 +126,10 @@ class DSClient(DSRequestHandler):
                 response = await self.request(url=self.URL_REACHABLE_SCENES.format(zoneId=zone_id, groupId=color))
                 if "result" not in response:
                     raise DSCommandFailedException("no result in server response")
-                reachable_scenes = response["result"]["reachableScenes"]
+                result = response["result"]
 
 
-                for reachable_scene in reachable_scenes:
+                for reachable_scene in result["reachableScenes"]:
                     scene_id = reachable_scene
                     scene_name = ALL_SCENES_BYID[scene_id]
 
@@ -132,6 +137,7 @@ class DSClient(DSRequestHandler):
                         zone_id=zone_id, color=color, scene_id=scene_id
                     )
 
+                    _LOGGER.debug("adding DSColorScene for reachable scene {id}")
                     self._scenes[id] = DSColorScene(
                         client=self,
                         zone_id=zone_id,
@@ -153,7 +159,7 @@ class DSClient(DSRequestHandler):
                     id = "{zone_id}_{color}_{scene_id}".format(
                         zone_id=zone_id, color=color, scene_id=scene_id
                     )
-
+                    _LOGGER.debug("adding DSColorScene for custom named scene {id}")
                     self._scenes[id] = DSColorScene(
                         client=self,
                         zone_id=zone_id,
