@@ -100,12 +100,14 @@ class DSClient(DSRequestHandler):
             zone_id = zone["ZoneID"]
             zone_name = zone["name"]
 
+            _LOGGER.debug("Zone {zone_name}".format("zone_name"))
+
             # add generic zone scenes
             _LOGGER.debug("adding generic scenes")
             for scene_name, scene_id in SCENES["GROUP_INDIPENDENT"].items():
                 id = "{zone_id}_{scene_id}".format(zone_id=zone_id, scene_id=scene_id)
                 
-                _LOGGER.debug("adding DSScene for {id}".format(id=id))
+                _LOGGER.debug("adding DSScene for {id} Zone Name {zone_name}".format(id=id, zone_name=zone_name))
                 self._scenes[id] = DSScene(
                     client=self,
                     zone_id=zone_id,
@@ -115,7 +117,6 @@ class DSClient(DSRequestHandler):
                 )
 
             # add reachable scenes and custom named scenes (?)
-            _LOGGER.debug("adding reachable scenes")
             for zone_key, zone_value in zone.items():
                 # we're only interested in groups
                 if not str(zone_key).startswith("group"):
@@ -124,13 +125,15 @@ class DSClient(DSRequestHandler):
                 # remember the color
                 color = zone_value["color"]
 
+                _LOGGER.debug("Group Color: {color}".format(color=color))
+
                 # get reachable scenes
                 response = await self.request(url=self.URL_REACHABLE_SCENES.format(zoneId=zone_id, groupId=color))
                 if "result" not in response:
                     raise DSCommandFailedException("no result in server response")
                 result = response["result"]
 
-
+                _LOGGER.debug("adding reachable scenes")
                 for reachable_scene in result["reachableScenes"]:
                     scene_id = reachable_scene
                     scene_name = ALL_SCENES_BYID[scene_id]
