@@ -101,10 +101,11 @@ class DSClient(DSRequestHandler):
             zone_name = zone["name"]
 
             # add generic zone scenes
+            _LOGGER.debug("adding generic scenes")
             for scene_name, scene_id in SCENES["GROUP_INDIPENDENT"].items():
                 id = "{zone_id}_{scene_id}".format(zone_id=zone_id, scene_id=scene_id)
                 
-                _LOGGER.debug("adding DSScene for {id}")
+                _LOGGER.debug("adding DSScene for {id}".format(id))
                 self._scenes[id] = DSScene(
                     client=self,
                     zone_id=zone_id,
@@ -114,6 +115,7 @@ class DSClient(DSRequestHandler):
                 )
 
             # add reachable scenes and custom named scenes (?)
+            _LOGGER.debug("adding reachable scenes")
             for zone_key, zone_value in zone.items():
                 # we're only interested in groups
                 if not str(zone_key).startswith("group"):
@@ -137,7 +139,7 @@ class DSClient(DSRequestHandler):
                         zone_id=zone_id, color=color, scene_id=scene_id
                     )
 
-                    _LOGGER.debug("adding DSColorScene for reachable scene {id}")
+                    _LOGGER.debug("adding DSColorScene for reachable scene {id}".format(id))
                     self._scenes[id] = DSColorScene(
                         client=self,
                         zone_id=zone_id,
@@ -149,6 +151,7 @@ class DSClient(DSRequestHandler):
 
     
                 # get custom named scenes
+                _LOGGER.debug("adding custom named scenes")
                 for group_key, group_value in zone_value.items():
                     # we're only interested in scenes
                     if not str(group_key).startswith("scene"):
@@ -159,7 +162,7 @@ class DSClient(DSRequestHandler):
                     id = "{zone_id}_{color}_{scene_id}".format(
                         zone_id=zone_id, color=color, scene_id=scene_id
                     )
-                    _LOGGER.debug("adding DSColorScene for custom named scene {id}")
+                    _LOGGER.debug("adding DSColorScene for custom named scene {id}".format(id))
                     self._scenes[id] = DSColorScene(
                         client=self,
                         zone_id=zone_id,
