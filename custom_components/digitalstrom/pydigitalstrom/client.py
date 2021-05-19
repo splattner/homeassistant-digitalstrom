@@ -100,7 +100,7 @@ class DSClient(DSRequestHandler):
             zone_id = zone["ZoneID"]
             zone_name = zone["name"]
 
-            _LOGGER.debug("Zone {zone_name}".format("zone_name"))
+            _LOGGER.debug("Zone {zone_name}".format(zone_name=zone_name))
 
             # add generic zone scenes
             _LOGGER.debug("adding generic scenes")
