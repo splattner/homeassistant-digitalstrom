@@ -207,7 +207,7 @@ class DigitalStromOptionsFlow(config_entries.OptionsFlow):
 
         # build scene list for mutli select
         scenes = {}
-        for scene_id, scene_name in constants.SCENE_NAMES.items():
+        for scene_id, scene_name in constants.ALL_SCENES_BYID.items():
             scenes[scene_name] = scene_name
         scenes = sorted(scenes)
 
