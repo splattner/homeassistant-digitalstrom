@@ -46,7 +46,13 @@ async def async_setup_entry(
         if not isinstance(scene, DSColorScene) or scene.color != dsconst.GROUP_LIGHTS:
             continue
         # not an area or broadcast turn off scene
-        if scene.scene_id > 4:
+        if scene.scene_id not in (
+            dsconst.SCENES["PRESET"]["SCENE_PRESET0"],
+            dsconst.SCENES["AREA"]["SCENE_AREA1_OFF"],
+            dsconst.SCENES["AREA"]["SCENE_AREA2_OFF"],
+            dsconst.SCENES["AREA"]["SCENE_AREA3_OFF"],
+            dsconst.SCENES["AREA"]["SCENE_AREA4_OFF"],
+        ):
             continue
 
         # get turn on counterpart
@@ -114,7 +120,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
             if (
                 self._scene_on.zone_id == zone_id
                 and self._scene_on.color == group_id
-                and (self._scene_on.scene_id == scene_id or 5 == scene_id)
+                and (self._scene_on.scene_id == scene_id or dsconst.SCENES["PRESET"]["SCENE_PRESET1"] == scene_id)
             ):
                 self._state = True
                 await self.async_update_ha_state()
@@ -122,7 +128,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
             elif (
                 self._scene_off.zone_id == zone_id
                 and self._scene_off.color == group_id
-                and (self._scene_off.scene_id == scene_id or 0 == scene_id)
+                and (self._scene_off.scene_id == scene_id or dsconst.SCENES["PRESET"]["SCENE_PRESET0"] == scene_id)
             ):
                 self._state = False
                 await self.async_update_ha_state()

@@ -5,7 +5,7 @@ import logging
 import aiohttp
 import asyncio
 
-from .constants import SCENES, ALL_SCENES_BYNAME, ALL_SCENES_BYID
+from .constants import GROUP_LIGHTS, SCENES, ALL_SCENES_BYNAME, ALL_SCENES_BYID
 from .exceptions import (
     DSException,
     DSCommandFailedException,
@@ -122,22 +122,25 @@ class DSClient(DSRequestHandler):
                 if not str(zone_key).startswith("group"):
                     continue
 
+                groupId = zone_value["group"]
+
+                # only light group
+                if groupId not in [GROUP_LIGHTS]:
+                    continue
+
                 # remember the color
                 color = zone_value["color"]
-
-                groupId = zone_value["group"]
 
                 _LOGGER.debug("Group Color: {color}".format(color=color))
 
                 # get reachable scenes
                 _LOGGER.debug("Get reachable scenes for Zone {zone_id} / Group {group_id}".format(zone_id=zone_id, group_id=groupId))
                 response_rs = await self.request(url=self.URL_REACHABLE_SCENES.format(zoneId=zone_id, groupId=groupId))
-                _LOGGER.debug("Reachable Zones Result: {result}".format(result=response_rs))
                 if "result" not in response_rs:
                     raise DSCommandFailedException("no result in server response")
                 result_rs = response_rs["result"]
 
-                _LOGGER.debug("adding {count} reachable scenes".format(count=len(result_rs)))
+                _LOGGER.debug("adding {count} reachable scenes".format(count=len(result_rs["reachableScenes"])))
                 for reachable_scene in result_rs["reachableScenes"]:
                     scene_id = reachable_scene
                     scene_name = ALL_SCENES_BYID[scene_id]
