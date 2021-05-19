@@ -93,8 +93,8 @@ ALL_SCENES_BYID = {}
 
 for scene_type, scenes in SCENES.items():
     for scene_name, scene_id in scenes.items():
-        ALL_SCENES_BYNAME.append(scene_name, scene_id)
-        ALL_SCENES_BYID.append(scene_id, scene_name)
+        ALL_SCENES_BYNAME[scene_name] = scene_id
+        ALL_SCENES_BYID[scene_id] = scene_name
 
 
 GROUP_LIGHTS = 1
