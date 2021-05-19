@@ -133,7 +133,7 @@ class DSClient(DSRequestHandler):
                 _LOGGER.debug("Get reachable scenes for Zone {zone_id} / Group {group_id}".format(zone_id=zone_id, group_id=groupId))
                 response_rs = await self.request(url=self.URL_REACHABLE_SCENES.format(zoneId=zone_id, groupId=groupId))
                 _LOGGER.debug("Reachable Zones Result: {result}".format(result=response_rs))
-                if "result" not in response:
+                if "result" not in response_rs:
                     raise DSCommandFailedException("no result in server response")
                 result_rs = response_rs["result"]
 
