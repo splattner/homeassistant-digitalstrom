@@ -100,14 +100,14 @@ class DSClient(DSRequestHandler):
             zone_id = zone["ZoneID"]
             zone_name = zone["name"]
 
-            _LOGGER.debug("Zone {zone_name}".format(zone_name=zone_name))
+            _LOGGER.debug("Zone ID: {zone_id} Name: {zone_name}".format(zone_id = zone_id, zone_name=zone_name))
 
             # add generic zone scenes
             _LOGGER.debug("adding generic scenes")
             for scene_name, scene_id in SCENES["GROUP_INDIPENDENT"].items():
                 id = "{zone_id}_{scene_id}".format(zone_id=zone_id, scene_id=scene_id)
                 
-                _LOGGER.debug("adding DSScene for {id} Zone Name {zone_name}".format(id=id, zone_name=zone_name))
+                _LOGGER.debug("adding DSScene Zone Name {zone_name} Scene Name {scene_name}".format(zone_name=zone_name, scene_name=scene_name))
                 self._scenes[id] = DSScene(
                     client=self,
                     zone_id=zone_id,
@@ -128,12 +128,14 @@ class DSClient(DSRequestHandler):
                 _LOGGER.debug("Group Color: {color}".format(color=color))
 
                 # get reachable scenes
+                _LOGGER.debug("Get reachable scenes for Zone {zone_id} / Group {group_id}".format(zoneId=zone_id, groupId=color))
                 response_rs = await self.request(url=self.URL_REACHABLE_SCENES.format(zoneId=zone_id, groupId=color))
+                _LOGGER.debug("Reachable Zones Result: {result}".format(result=response_rs))
                 if "result" not in response:
                     raise DSCommandFailedException("no result in server response")
                 result_rs = response_rs["result"]
 
-                _LOGGER.debug("adding reachable scenes")
+                _LOGGER.debug("adding {count} reachable scenes".format(len(result_rs)))
                 for reachable_scene in result_rs["reachableScenes"]:
                     scene_id = reachable_scene
                     scene_name = ALL_SCENES_BYID[scene_id]
@@ -142,7 +144,7 @@ class DSClient(DSRequestHandler):
                         zone_id=zone_id, color=color, scene_id=scene_id
                     )
 
-                    _LOGGER.debug("adding DSColorScene for reachable scene {id}".format(id=id))
+                    _LOGGER.debug("adding DSColorScene for reachable scene {scene_name}".format(scene_name=scene_name))
                     self._scenes[id] = DSColorScene(
                         client=self,
                         zone_id=zone_id,
