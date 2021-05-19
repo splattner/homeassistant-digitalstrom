@@ -128,13 +128,13 @@ class DSClient(DSRequestHandler):
                 _LOGGER.debug("Group Color: {color}".format(color=color))
 
                 # get reachable scenes
-                response = await self.request(url=self.URL_REACHABLE_SCENES.format(zoneId=zone_id, groupId=color))
+                response_rs = await self.request(url=self.URL_REACHABLE_SCENES.format(zoneId=zone_id, groupId=color))
                 if "result" not in response:
                     raise DSCommandFailedException("no result in server response")
-                result = response["result"]
+                result_rs = response_rs["result"]
 
                 _LOGGER.debug("adding reachable scenes")
-                for reachable_scene in result["reachableScenes"]:
+                for reachable_scene in result_rs["reachableScenes"]:
                     scene_id = reachable_scene
                     scene_name = ALL_SCENES_BYID[scene_id]
 
