@@ -1,7 +1,8 @@
 """Define constants for the digitalSTROM component."""
+from custom_components.digitalstrom.pydigitalstrom.constants import SCENE_PRESET0
 from typing import List
 
-from pydigitalstrom import constants as dsconst
+from .pydigitalstrom import constants as dsconst
 
 DOMAIN: str = "digitalstrom"
 
@@ -20,6 +21,11 @@ DEFAULT_ALIAS: str = "Apartment"
 
 OPTION_GENERIC_SCENES: str = "generic_scenes"
 OPTION_GENERIC_SCENES_DEFAULT: List[str] = [
+    dsconst.SCENE_PRESET0,
+    dsconst.SCENE_PRESET1,
+    dsconst.SCENE_PRESET2,
+    dsconst.SCENE_PRESET3,
+    dsconst.SCENE_PRESET4,
     dsconst.SCENE_SLEEPING,
     dsconst.SCENE_WAKEUP,
     dsconst.SCENE_PRESENT,

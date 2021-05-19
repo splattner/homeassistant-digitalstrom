@@ -6,9 +6,9 @@ from homeassistant.components.scene import Scene
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
-from pydigitalstrom import constants
-from pydigitalstrom.client import DSClient
-from pydigitalstrom.devices.scene import DSScene, DSColorScene
+from .pydigitalstrom import constants
+from .pydigitalstrom.client import DSClient
+from .pydigitalstrom.devices.scene import DSScene, DSColorScene
 
 from .const import DOMAIN, OPTION_GENERIC_SCENES, OPTION_GENERIC_SCENES_DEFAULT
 from .util import slugify_entry
@@ -43,7 +43,7 @@ async def async_setup_entry(
             # area and broadcast scenes (yellow/1 and grey/2 up to id 9)
             # shouldn't be added since they'll be processed as
             # lights and covers
-            if scene.color in (1, 2) and scene.scene_id <= 9:
+            if scene.color in (constants.GROUP_LIGHTS, constants.GROUP_BLINDS) and scene.scene_id <= 9:
                 continue
 
         _LOGGER.info(f"adding scene {scene.scene_id}: {scene.name}")

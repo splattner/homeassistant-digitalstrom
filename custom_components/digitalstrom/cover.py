@@ -6,9 +6,10 @@ from homeassistant.components.cover import CoverEntity, SUPPORT_CLOSE, SUPPORT_O
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
-from pydigitalstrom.client import DSClient
-from pydigitalstrom.devices.scene import DSScene, DSColorScene
-from pydigitalstrom.websocket import DSWebsocketEventListener
+from .pydigitalstrom.client import DSClient
+from .pydigitalstrom import constants as dsconst
+from .pydigitalstrom.devices.scene import DSScene, DSColorScene
+from .pydigitalstrom.websocket import DSWebsocketEventListener
 
 from .const import DOMAIN
 from .util import slugify_entry
@@ -39,7 +40,7 @@ async def async_setup_entry(
     scene: Union[DSScene, DSColorScene]
     for scene in scenes.values():
         # only handle cover (color 2) scenes
-        if not isinstance(scene, DSColorScene) or scene.color != 2:
+        if not isinstance(scene, DSColorScene) or scene.color != dsconst.GROUP_BLINDS:
             continue
         # not an area or broadcast turn off scene
         if scene.scene_id > 4:

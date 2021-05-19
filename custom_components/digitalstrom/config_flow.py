@@ -85,8 +85,8 @@ class DigitalStromConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # validate input
         if user_input is not None:
-            from pydigitalstrom.apptokenhandler import DSAppTokenHandler
-            from pydigitalstrom.exceptions import DSException
+            from .pydigitalstrom.apptokenhandler import DSAppTokenHandler
+            from .pydigitalstrom.exceptions import DSException
 
             # build client config
             self.device_config = user_input.copy()
@@ -203,7 +203,7 @@ class DigitalStromOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        from pydigitalstrom import constants
+        from .pydigitalstrom import constants
 
         # build scene list for mutli select
         scenes = {}

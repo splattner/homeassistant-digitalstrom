@@ -21,9 +21,9 @@ from homeassistant.exceptions import ConfigEntryNotReady, InvalidStateError
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from homeassistant.util import slugify
 
-from pydigitalstrom.client import DSClient
-from pydigitalstrom.exceptions import DSException
-from pydigitalstrom.websocket import DSWebsocketEventListener
+from .pydigitalstrom.client import DSClient
+from .pydigitalstrom.exceptions import DSException
+from .pydigitalstrom.websocket import DSWebsocketEventListener
 
 from .const import (
     DOMAIN,
