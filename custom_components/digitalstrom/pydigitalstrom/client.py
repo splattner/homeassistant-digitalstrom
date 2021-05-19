@@ -105,7 +105,7 @@ class DSClient(DSRequestHandler):
             for scene_name, scene_id in SCENES["GROUP_INDIPENDENT"].items():
                 id = "{zone_id}_{scene_id}".format(zone_id=zone_id, scene_id=scene_id)
                 
-                _LOGGER.debug("adding DSScene for {id}".format(id))
+                _LOGGER.debug("adding DSScene for {id}".format(id=id))
                 self._scenes[id] = DSScene(
                     client=self,
                     zone_id=zone_id,
@@ -139,7 +139,7 @@ class DSClient(DSRequestHandler):
                         zone_id=zone_id, color=color, scene_id=scene_id
                     )
 
-                    _LOGGER.debug("adding DSColorScene for reachable scene {id}".format(id))
+                    _LOGGER.debug("adding DSColorScene for reachable scene {id}".format(id=id))
                     self._scenes[id] = DSColorScene(
                         client=self,
                         zone_id=zone_id,
@@ -162,7 +162,7 @@ class DSClient(DSRequestHandler):
                     id = "{zone_id}_{color}_{scene_id}".format(
                         zone_id=zone_id, color=color, scene_id=scene_id
                     )
-                    _LOGGER.debug("adding DSColorScene for custom named scene {id}".format(id))
+                    _LOGGER.debug("adding DSColorScene for custom named scene {id}".format(id=id))
                     self._scenes[id] = DSColorScene(
                         client=self,
                         zone_id=zone_id,
