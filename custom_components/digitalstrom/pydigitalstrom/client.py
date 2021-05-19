@@ -4,7 +4,7 @@ import time
 import aiohttp
 import asyncio
 
-from .constants import SCENE_NAMES
+from .constants import SCENES, ALL_SCENES_BYNAME, ALL_SCENES_BYID
 from .exceptions import (
     DSException,
     DSCommandFailedException,
@@ -15,8 +15,11 @@ from .requesthandler import DSRequestHandler
 
 class DSClient(DSRequestHandler):
     URL_SCENES = (
-        "/json/property/query2?query=/apartment/zones/*(*)/" "groups/*(*)/scenes/*(*)"
+        "/json/property/query2?query=/apartment/zones/*(*)/" "groups/*(*)"
     )
+    URL_REACHABLE_SCENES = "json/zone/getReachableScenes?id={zoneId}&groupID={groupId}"
+    URL_SCENE_GETNAME = "json/zone/sceneGetName?id={zoneId}&groupID={groupId}&sceneNumber={scene}"
+
     URL_EVENT_SUBSCRIBE = "/json/event/subscribe?name={name}&" "subscriptionID={id}"
     URL_EVENT_UNSUBSCRIBE = "/json/event/unsubscribe?name={name}&" "subscriptionID={id}"
     URL_EVENT_POLL = "/json/event/get?subscriptionID={id}&timeout={timeout}"
@@ -95,7 +98,7 @@ class DSClient(DSRequestHandler):
             zone_name = zone["name"]
 
             # add generic zone scenes
-            for scene_id, scene_name in SCENE_NAMES.items():
+            for scene_name, scene_id in SCENES["GROUP_INDIPENDENT"].items():
                 id = "{zone_id}_{scene_id}".format(zone_id=zone_id, scene_id=scene_id)
                 self._scenes[id] = DSScene(
                     client=self,
@@ -105,7 +108,7 @@ class DSClient(DSRequestHandler):
                     scene_name=scene_name,
                 )
 
-            # add area and custom named scenes
+            # add reachable scenes and custom named scenes (?)
             for zone_key, zone_value in zone.items():
                 # we're only interested in groups
                 if not str(zone_key).startswith("group"):
@@ -114,6 +117,32 @@ class DSClient(DSRequestHandler):
                 # remember the color
                 color = zone_value["color"]
 
+                # get reachable scenes
+                response = await self.request(url=self.URL_REACHABLE_SCENES.format(zoneId=zone_id, groupId=color))
+                if "result" not in response:
+                    raise DSCommandFailedException("no result in server response")
+                reachable_scenes = response["result"]["reachableScenes"]
+
+
+                for reachable_scene in reachable_scenes:
+                    scene_id = reachable_scene
+                    scene_name = ALL_SCENES_BYID[scene_id]
+
+                    id = "{zone_id}_{color}_{scene_id}".format(
+                        zone_id=zone_id, color=color, scene_id=scene_id
+                    )
+
+                    self._scenes[id] = DSColorScene(
+                        client=self,
+                        zone_id=zone_id,
+                        zone_name=zone_name,
+                        scene_id=scene_id,
+                        scene_name=scene_name,
+                        color=color,
+                    )
+
+    
+                # get custom named scenes
                 for group_key, group_value in zone_value.items():
                     # we're only interested in scenes
                     if not str(group_key).startswith("scene"):

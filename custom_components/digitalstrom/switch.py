@@ -46,7 +46,7 @@ async def async_setup_entry(
         if not isinstance(scene, DSScene):
             continue
         # only sleeping and present
-        if scene.scene_id not in [dsconst.SCENE_SLEEPING, dsconst.SCENE_PRESENT]:
+        if scene.scene_id not in [dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_SLEEPING"], dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_PRESENT"] ]:
             continue
 
         # get turn on counterpart
@@ -86,10 +86,10 @@ class DigitalstromSwitch(RestoreEntity, SwitchEntity):
         self._state: bool = None
 
         # sleeping default is false
-        if self._scene_on.scene_id == 69:
+        if self._scene_on.scene_id == dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_SLEEPING"]:
             self._state = False
         # present default is true
-        elif self._scene_on.scene_id == 71:
+        elif self._scene_on.scene_id == dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_PRESENT"]:
             self._state = True
         super().__init__(*args, **kwargs)
 
