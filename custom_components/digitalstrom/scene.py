@@ -10,7 +10,7 @@ from .pydigitalstrom import constants
 from .pydigitalstrom.client import DSClient
 from .pydigitalstrom.devices.scene import DSScene, DSColorScene
 
-from .const import DOMAIN, OPTION_GENERIC_SCENES, OPTION_GENERIC_SCENES_DEFAULT
+from .const import DOMAIN
 from .util import slugify_entry
 
 _LOGGER = logging.getLogger(__name__)
