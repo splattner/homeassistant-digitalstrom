@@ -30,8 +30,6 @@ from .const import (
     DEFAULT_DELAY,
     DEFAULT_USERNAME,
     TITLE_FORMAT,
-    OPTION_GENERIC_SCENES,
-    OPTION_GENERIC_SCENES_DEFAULT,
 )
 from .util import slugify_entry
 
