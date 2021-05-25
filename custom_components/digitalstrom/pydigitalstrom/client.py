@@ -64,6 +64,7 @@ class DSClient(DSRequestHandler):
             self._session_token = await self.get_session_token()
 
         # update last request timestamp and call api
+        _LOGGER.debug("Request to {url}".format(url = url))
         self._last_request = time.time()
         data = await self.raw_request(
             url=url, params=dict(token=self._session_token), **kwargs
