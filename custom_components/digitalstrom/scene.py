@@ -95,7 +95,7 @@ class DigitalstromScene(Scene):
     @property
     def hidden(self) -> bool:
         # only check known generic scenes
-        if self._scene.scene_id in constants.SCENES["GROUP_INDIPENDENT"].keys():
+        if self._scene.scene_id in constants.SCENES["GROUP_INDIPENDENT"].values():
 
             # get integration options or default
             default: list = OPTION_GENERIC_SCENES_DEFAULT
