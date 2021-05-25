@@ -91,35 +91,3 @@ class DigitalstromScene(Scene):
             "model": "DSScene",
             "manufacturer": "digitalSTROM AG",
         }
-
-    @property
-    def hidden(self) -> bool:
-        # only check known generic scenes
-        if self._scene.scene_id in constants.SCENES["GROUP_INDIPENDENT"].values():
-
-            # get integration options or default
-            default: list = OPTION_GENERIC_SCENES_DEFAULT
-            if (
-                self._config_entry.options
-                and OPTION_GENERIC_SCENES in self._config_entry.options
-            ):
-                default = self._config_entry.options[OPTION_GENERIC_SCENES]
-
-            # build list of visible generic scenes
-            visible_scenes: list = []
-            option: str
-            for option in default:
-                visible_scenes.append(
-                    list(constants.SCENES["GROUP_INDIPENDENT"].keys())[
-                        list(constants.SCENES["GROUP_INDIPENDENT"].values()).index(option)
-                    ]
-                )
-
-            # scenes is set to be shown in options
-            if self._scene.scene_id in default:
-                return False
-
-            return True
-
-        # default to visible
-        return False
