@@ -116,7 +116,7 @@ class DigitalstromScene(Scene):
                 )
 
             # scenes is set to be shown in options
-            if self._scene.scene_id in visible_scenes:
+            if self._scene.scene_id in default:
                 return False
 
             return True

@@ -1,10 +1,13 @@
 import json
+import logging
 
 import aiohttp
 import asyncio
 import socket
 
 from .exceptions import DSCommandFailedException, DSRequestException
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class DSRequestHandler:
@@ -24,6 +27,8 @@ class DSRequestHandler:
         :raises: DSCommandFailedException
         """
         url = f"https://{self.host}:{self.port}{url}"
+
+        _LOGGER.debug("Raw Request to {url}".format(url = url))
 
         # disable ssl verification for most servers miss valid certificates
         async with await self.get_aiohttp_session() as session:
