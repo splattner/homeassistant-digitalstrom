@@ -29,7 +29,9 @@ class DSWebsocketEventListener:
         url = f"wss://{self._client.host}:{self._client.port}/websocket"
         self._ws = session.ws_connect(url=url)
         async with self._ws as ws:
+            DSLog.logger.debug(f"WS connected")
             async for msg in ws:
+                DSLog.logger.debug(f"New WS message")
                 if msg.type == aiohttp.WSMsgType.TEXT:
                     await self._handle_event(event=json.loads(msg.data))
                 else:
@@ -43,7 +45,7 @@ class DSWebsocketEventListener:
     async def _handle_event(self, event: dict):
 
         DSLog.logger.debug("WS Event {event}")
-        
+
         if "name" not in event:
             return
 

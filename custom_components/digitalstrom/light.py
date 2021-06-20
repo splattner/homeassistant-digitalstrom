@@ -65,7 +65,7 @@ async def async_setup_entry(
             continue
 
         # add light
-        _LOGGER.info(f"adding light {scene.scene_id}: {scene.name}")
+        _LOGGER.info(f"adding light {scene.scene_id}: Off: {scene.name}, On: {scene_on.name}")
         devices.append(
             DigitalstromLight(
                 hass=hass, scene_on=scene_on, scene_off=scene, listener=listener
@@ -132,6 +132,10 @@ class DigitalstromLight(RestoreEntity, LightEntity):
             ):
                 self._state = False
                 await self.async_update_ha_state()
+
+        _LOGGER.debug(
+            f"Register callback for {self._scene_off.name}"
+        )
 
         self._listener.register(callback=event_callback)
 
