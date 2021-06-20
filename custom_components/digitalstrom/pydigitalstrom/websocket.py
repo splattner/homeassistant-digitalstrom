@@ -23,6 +23,7 @@ class DSWebsocketEventListener:
         return dict(token=await self._client.get_session_token())
 
     async def start(self):
+        DSLog.logger.debug(f"DSWebsocketEventListener start")
         session = await self._client.get_aiohttp_session(
             cookies=await self._get_cookie()
         )
