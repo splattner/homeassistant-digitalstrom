@@ -23,10 +23,6 @@ class DSClient(DSRequestHandler):
     URL_REACHABLE_SCENES = "/json/zone/getReachableScenes?id={zoneId}&groupID={groupId}"
     URL_SCENE_GETNAME = "/json/zone/sceneGetName?id={zoneId}&groupID={groupId}&sceneNumber={scene}"
 
-    URL_EVENT_SUBSCRIBE = "/json/event/subscribe?name={name}&" "subscriptionID={id}"
-    URL_EVENT_UNSUBSCRIBE = "/json/event/unsubscribe?name={name}&" "subscriptionID={id}"
-    URL_EVENT_POLL = "/json/event/get?subscriptionID={id}&timeout={timeout}"
-
     URL_SESSIONTOKEN = "/json/system/loginApplication?loginToken={apptoken}"
 
     def __init__(

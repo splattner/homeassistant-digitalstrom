@@ -41,6 +41,9 @@ class DSWebsocketEventListener:
             self._ws = None
 
     async def _handle_event(self, event: dict):
+
+        DSLog.logger.debug("WS Event {event}")
+        
         if "name" not in event:
             return
 
