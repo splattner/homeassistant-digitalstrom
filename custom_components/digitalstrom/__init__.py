@@ -14,6 +14,7 @@ from homeassistant.const import (
     CONF_ALIAS,
     CONF_TOKEN,
     EVENT_HOMEASSISTANT_START,
+    EVENT_HOMEASSISTANT_START,
     EVENT_HOMEASSISTANT_STOP,
 )
 from homeassistant.core import callback
@@ -106,12 +107,12 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry) -> bool
         )
 
     # start websocket listener and action delayer loops on hass startup
-    async def digitalstrom_start_loops(event):
-        _LOGGER.info(f"loops started for digitalSTROM server at {client.host}")
-        hass.async_add_job(listener.start)
-        hass.async_add_job(client.stack.start)
+    #async def digitalstrom_start_loops(event):
+    _LOGGER.info(f"loops started for digitalSTROM server at {client.host}")
+    hass.async_add_job(listener.start)
+    hass.async_add_job(client.stack.start)
 
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, digitalstrom_start_loops)
+    #hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, digitalstrom_start_loops)
 
     # start websocket listener and action delayer loops on hass shutdown
     async def digitalstrom_stop_loops(event):
