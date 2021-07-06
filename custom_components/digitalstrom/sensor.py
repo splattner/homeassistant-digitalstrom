@@ -27,8 +27,11 @@ async def async_setup_platform(
 
 
 async def async_setup_entry(
-    hass: HomeAssistantType, entry: ConfigEntry, async_add_entities: Callable
+    hass: HomeAssistantType, 
+    entry: ConfigEntry, 
+    async_add_entities: Callable
 ) -> None:
+
     entry_slug: str = slugify_entry(
         host=entry.data[CONF_HOST], port=entry.data[CONF_PORT]
     )
@@ -91,13 +94,6 @@ class DigitalstromMeter(SensorEntity):
     def device_class(self):
         return "power"
 
-    async def async_update(self, **kwargs) -> None:
-        self._state = await self._dsmeter.getLatest()
-
-    @property
-    def should_poll(self) -> bool:
-        return True
-
     @property
     def device_info(self) -> dict:
         """Return information about the device."""
@@ -107,3 +103,6 @@ class DigitalstromMeter(SensorEntity):
             "model": "DSMeter",
             "manufacturer": "digitalSTROM AG",
         }
+
+    async def async_update(self, **kwargs) -> None:
+        self._state = await self._dsmeter.get_latest()
