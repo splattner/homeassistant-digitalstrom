@@ -25,6 +25,8 @@ class DSClient(DSRequestHandler):
 
     URL_SESSIONTOKEN = "/json/system/loginApplication?loginToken={apptoken}"
 
+    URL_METERS = "/json/property/getChildren?path=/apartment/dSMeters/"
+
     def __init__(
         self,
         host: str,
@@ -40,6 +42,7 @@ class DSClient(DSRequestHandler):
         self._last_request = None
         self._session_token = None
         self._scenes = dict()
+        self._meters = dict()
 
         from .commandstack import DSCommandStack
 
@@ -77,6 +80,7 @@ class DSClient(DSRequestHandler):
 
     async def initialize(self):
         from .devices.scene import DSScene, DSColorScene
+        from .devices.meter import DSMeter
 
         # get scenes
         response = await self.request(url=self.URL_SCENES)
@@ -178,6 +182,27 @@ class DSClient(DSRequestHandler):
                         scene_name=scene_name,
                         color=color,
                     )
+        # get meters
+        response = await self.request(url=self.URL_METERS)
+        if "result" not in response:
+            raise DSCommandFailedException("no result in server response")
+        result = response["result"]
+
+        for meter in result:
+
+            dsuid = meter["name"]
+            _LOGGER.debug("adding DSMeter with dSUID{dsuid}".format(dsuid=dsuid))
+            dsmeter = DSMeter(client=self, dsuid=dsuid)
+            await dsmeter.async_init()
+            _LOGGER.debug("Async init done for DSMeter {dsuid}".format(dsuid=dsuid))
+            if dsmeter.name == "":
+                continue
+
+            self._meters[dsuid] = dsmeter
+
 
     def get_scenes(self):
         return self._scenes
+
+    def get_meters(self):
+        return self._meters

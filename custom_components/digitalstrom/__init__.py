@@ -37,7 +37,7 @@ from .util import slugify_entry
 
 _LOGGER = logging.getLogger(__name__)
 
-COMPONENT_TYPES = ["light", "switch", "cover", "scene"]
+COMPONENT_TYPES = ["light", "switch", "cover", "scene","sensor"]
 
 
 async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
