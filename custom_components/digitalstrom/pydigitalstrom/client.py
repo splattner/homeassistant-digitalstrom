@@ -80,7 +80,6 @@ class DSClient(DSRequestHandler):
 
     async def initialize(self):
         from .devices.scene import DSScene, DSColorScene
-        from .devices.meter import DSMeter
 
         # get scenes
         response = await self.request(url=self.URL_SCENES)
@@ -182,6 +181,9 @@ class DSClient(DSRequestHandler):
                         scene_name=scene_name,
                         color=color,
                     )
+        
+        from .devices.meter import DSMeter
+        
         # get meters
         response = await self.request(url=self.URL_METERS)
         if "result" not in response:

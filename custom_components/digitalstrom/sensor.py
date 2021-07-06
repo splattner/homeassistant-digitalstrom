@@ -5,12 +5,10 @@ from typing import Callable, Union
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import POWER_WATT, CONF_HOST, CONF_PORT
-from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from .pydigitalstrom.client import DSClient
-from .pydigitalstrom import constants as dsconst
-from .pydigitalstrom.devices.scene import DSMeter
-from .pydigitalstrom.websocket import DSWebsocketEventListener
+from .pydigitalstrom.devices.meter import DSMeter
+
 
 from .const import DOMAIN
 from .util import slugify_entry
