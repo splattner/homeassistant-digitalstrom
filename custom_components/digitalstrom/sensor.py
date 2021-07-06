@@ -96,7 +96,7 @@ class DigitalstromMeter(SensorEntity):
 
     @property
     def should_poll(self) -> bool:
-        return False
+        return True
 
     @property
     def device_info(self) -> dict:
