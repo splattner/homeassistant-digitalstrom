@@ -91,6 +91,10 @@ class DigitalstromConsumptionMeter(SensorEntity):
         return self._state
 
     @property
+    def state_class(self):
+        return "measurement"
+
+    @property
     def unit_of_measurement(self):
         """Return the unit the value is expressed in."""
         return POWER_WATT
