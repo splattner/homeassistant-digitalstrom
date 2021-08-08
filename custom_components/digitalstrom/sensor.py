@@ -56,11 +56,11 @@ async def async_setup_entry(
             )
         )
 
-    device: Union[DigitalstromMeter,DigitalstromEnergyMeter]
+    device: Union[DigitalstromConsumptionMeter,DigitalstromEnergyMeter]
     async_add_entities(device for device in devices)
 
 
-class DigitalstromMeter(SensorEntity):
+class DigitalstromConsumptionMeter(SensorEntity):
     def __init__(
         self,
         hass: HomeAssistantType,
@@ -76,11 +76,11 @@ class DigitalstromMeter(SensorEntity):
 
     @property
     def name(self) -> str:
-        return self._dsmeter.name
+        return f"{self._dsmeter.name}_consumption"
 
     @property
     def unique_id(self) -> str:
-        return f"dsmeter_{self._dsmeter.unique_id}"
+        return f"dsmeter_{self._dsmeter.unique_id}_cosumption"
 
     @property
     def available(self) -> bool:
@@ -128,11 +128,11 @@ class DigitalstromEnergyMeter(SensorEntity):
 
     @property
     def name(self) -> str:
-        return self._dsmeter.name
+        return f"{self._dsmeter.name}_energy"
 
     @property
     def unique_id(self) -> str:
-        return f"dsenergymeter_{self._dsmeter.unique_id}"
+        return f"dsenergymeter_{self._dsmeter.unique_id}_energy"
 
     @property
     def available(self) -> bool:
