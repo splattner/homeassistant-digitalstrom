@@ -8,6 +8,7 @@ from homeassistant.const import POWER_WATT, ENERGY_WATT_HOUR, CONF_HOST, CONF_PO
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from .pydigitalstrom.client import DSClient
 from .pydigitalstrom.devices.meter import DSMeter
+from homeassistant.util import dt
 
 
 from .const import DOMAIN
@@ -161,7 +162,7 @@ class DigitalstromEnergyMeter(SensorEntity):
 
     @property
     def last_reset(self):
-        return homeassistant.util.dt.utc_from_timestamp(0)
+        return dt.utc_from_timestamp(0)
 
     @property
     def device_info(self) -> dict:
