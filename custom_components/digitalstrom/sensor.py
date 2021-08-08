@@ -76,7 +76,7 @@ class DigitalstromConsumptionMeter(SensorEntity):
 
     @property
     def name(self) -> str:
-        return f"{self._dsmeter.name}_consumption"
+        return f"{self._dsmeter.name} Consumption"
 
     @property
     def unique_id(self) -> str:
@@ -128,7 +128,7 @@ class DigitalstromEnergyMeter(SensorEntity):
 
     @property
     def name(self) -> str:
-        return f"{self._dsmeter.name}_energy"
+        return f"{self._dsmeter.name} Energy"
 
     @property
     def unique_id(self) -> str:
