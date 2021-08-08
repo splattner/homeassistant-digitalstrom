@@ -46,7 +46,7 @@ async def async_setup_entry(
         # add meter
         _LOGGER.info(f"adding meter {meter.name}")
         devices.append(
-            DigitalstromMeter(
+            DigitalstromConsumptionMeter(
                 hass=hass, dsmeter=meter
             )
         )
