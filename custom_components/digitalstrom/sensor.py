@@ -154,7 +154,7 @@ class DigitalstromEnergyMeter(SensorEntity):
         
     @property
     def state_class(self):
-        return "measurement"
+        return "total_increasing"
 
     @property
     def device_class(self):
