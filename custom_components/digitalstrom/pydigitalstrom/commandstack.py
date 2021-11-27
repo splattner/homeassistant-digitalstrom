@@ -1,7 +1,10 @@
 import asyncio
+import logging
 
 from .client import DSClient
 
+
+_LOGGER = logging.getLogger(__name__)
 
 class DSCommandStack:
     def __init__(self, client: DSClient, delay: int = 500):
@@ -17,6 +20,7 @@ class DSCommandStack:
         while True:
             # check for command to execute
             if len(self._stack) > 0:
+                _LOGGER.debug("Command Stack not empty, executing next request")
                 await self._client.request(url=self._stack.pop(0))
 
             # sleep for x ms before next execution to not overload the DS server

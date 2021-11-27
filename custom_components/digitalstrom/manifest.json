@@ -4,8 +4,9 @@
   "documentation": "https://www.home-assistant.io/components/digitalstrom",
   "requirements": [],
   "dependencies": [],
+  "version": "0.0.1",
   "codeowners": [
-    "@lociii"
+    "@splattner"
   ],
   "config_flow": true,
   "ssdp": {
