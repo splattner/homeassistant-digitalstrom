@@ -211,6 +211,9 @@ class DigitalstromLight(RestoreEntity, LightEntity):
             _LOGGER.debug(
                 f"call turn on with Effect {kwargs[ATTR_EFFECT]}"
             )
+            if kwargs[ATTR_EFFECT] == "PRESET1":
+                await self._scene_on.turn_on()
+                self._effect = "PRESET1"
             if kwargs[ATTR_EFFECT] == "PRESET2":
                 await self._scene_effects["preset2"].turn_on()
                 self._effect = "PRESET2"
