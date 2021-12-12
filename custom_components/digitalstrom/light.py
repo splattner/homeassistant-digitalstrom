@@ -213,13 +213,13 @@ class DigitalstromLight(RestoreEntity, LightEntity):
             )
             if kwargs[ATTR_EFFECT] == "PRESET2":
                 await self._scene_effects["preset2"].turn_on()
-                self._effect = "preset2"
+                self._effect = "PRESET2"
             if kwargs[ATTR_EFFECT] == "PRESET3":
                 await self._scene_effects["preset3"].turn_on()
-                self._effect = "preset3"
+                self._effect = "PRESET3"
             if kwargs[ATTR_EFFECT] == "PRESET4":
                 await self._scene_effects["preset4"].turn_on()
-                self._effect = "preset4"
+                self._effect = "PRESET4"
                 
         else:
             await self._scene_on.turn_on()
