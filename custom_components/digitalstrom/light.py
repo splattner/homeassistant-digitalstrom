@@ -143,7 +143,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
     @property
     def effect_list(self):
         """Return the list of supported effects for this light."""
-        return ["PRESET2", "PRESET3", "PRESET4"]
+        return ["PRESET1","PRESET2", "PRESET3", "PRESET4"]
 
     def register_callback(self):
         async def event_callback(event: dict) -> None:
@@ -223,7 +223,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
                 
         else:
             await self._scene_on.turn_on()
-            self._effect = ""
+            self._effect = "PRESET1"
         self._state = True
 
     async def async_turn_off(self, **kwargs) -> None:

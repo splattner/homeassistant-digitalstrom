@@ -8,6 +8,7 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from .pydigitalstrom import constants
 from .pydigitalstrom.client import DSClient
+from .pydigitalstrom import constants as dsconst
 from .pydigitalstrom.devices.scene import DSScene, DSColorScene
 
 from .const import DOMAIN
@@ -44,6 +45,26 @@ async def async_setup_entry(
             # shouldn't be added since they'll be processed as
             # lights and covers
             if scene.color in (constants.GROUP_LIGHTS, constants.GROUP_BLINDS) and scene.scene_id <= 9:
+                continue
+
+            # Preset X2-X4 are handled with Effects
+            if scene.color in (constants.GROUP_LIGHTS, constants.GROUP_BLINDS) and scene.scene_id in (
+                dsconst.SCENES["PRESET"]["SCENE_PRESET2"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET3"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET4"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET12"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET13"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET14"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET22"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET23"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET24"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET32"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET33"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET34"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET42"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET43"],
+                dsconst.SCENES["PRESET"]["SCENE_PRESET44"],
+                ):
                 continue
 
         _LOGGER.info(f"adding scene {scene.scene_id}: {scene.name}")
