@@ -48,7 +48,7 @@ async def async_setup_entry(
                 continue
 
             # Preset X2-X4 are handled with Effects
-            if scene.color in (constants.GROUP_LIGHTS) and scene.scene_id in (
+            if scene.color in (constants.GROUP_LIGHTS) and scene.scene_id in [
                 dsconst.SCENES["PRESET"]["SCENE_PRESET2"],
                 dsconst.SCENES["PRESET"]["SCENE_PRESET3"],
                 dsconst.SCENES["PRESET"]["SCENE_PRESET4"],
@@ -64,7 +64,7 @@ async def async_setup_entry(
                 dsconst.SCENES["PRESET"]["SCENE_PRESET42"],
                 dsconst.SCENES["PRESET"]["SCENE_PRESET43"],
                 dsconst.SCENES["PRESET"]["SCENE_PRESET44"],
-                ):
+                ]:
                 continue
 
         _LOGGER.info(f"adding scene {scene.scene_id}: {scene.name}")
