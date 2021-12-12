@@ -93,7 +93,7 @@ async def async_setup_entry(
             continue
 
         # add light
-        _LOGGER.info(f"adding light {scene.scene_id}: Off: {scene.name}, On: {scene_on.name}")
+        _LOGGER.info(f"adding light {scene.scene_id}: Off: {scene.name}, On: {scene_on.name}, Preset2: {effects['preset2'].name}, Preset3: {effects['preset3'].name}, Preset4: {effects['preset4'].name}")
         devices.append(
             DigitalstromLight(
                 hass=hass, scene_on=scene_on, scene_off=scene, listener=listener, effects=effects
@@ -208,6 +208,9 @@ class DigitalstromLight(RestoreEntity, LightEntity):
     async def async_turn_on(self, **kwargs) -> None:
 
         if ATTR_EFFECT in kwargs:
+            _LOGGER.debug(
+                f"call turn on with Effect {kwargs[ATTR_EFFECT]}"
+            )
             if kwargs[ATTR_EFFECT] == "PRESET2":
                 await self._scene_effects["preset2"].turn_on()
                 self._effect = "preset2"
