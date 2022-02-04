@@ -33,6 +33,10 @@ Only sleeping and presence on/off scenes are merged in meta switch devices for n
 
 Every scene that is not an area light or cover scene is exposed as a regular scene to Home Assistant.
 
+### Meters
+
+Every power meter.
+
 ## BREAKING CHANGES
 
 Release 1.1.0 introduced a backwards incompatible change that makes it necessary to set up the integration from scratch

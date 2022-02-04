@@ -161,10 +161,6 @@ class DigitalstromEnergyMeter(SensorEntity):
         return "energy"
 
     @property
-    def last_reset(self):
-        return dt.utc_from_timestamp(0)
-
-    @property
     def device_info(self) -> dict:
         """Return information about the device."""
         return {

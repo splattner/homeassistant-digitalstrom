@@ -14,7 +14,6 @@ from homeassistant.const import (
     CONF_ALIAS,
     CONF_TOKEN,
     EVENT_HOMEASSISTANT_START,
-    EVENT_HOMEASSISTANT_START,
     EVENT_HOMEASSISTANT_STOP,
 )
 from homeassistant.core import callback
