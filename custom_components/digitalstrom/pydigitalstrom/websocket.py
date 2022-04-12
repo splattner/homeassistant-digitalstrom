@@ -41,7 +41,7 @@ class DSWebsocketEventListener:
     async def stop(self):
 
 
-        if self._ws is not None and not self._ws.closed:
+        if self._ws is not None:
             await self._ws.close()
             self._ws = None
 
