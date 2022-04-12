@@ -144,6 +144,10 @@ class DigitalstromEnergyMeter(SensorEntity):
         return True
 
     @property
+    def last_reset(self):
+        return None
+
+    @property
     def state(self) -> int:
         return self._state
 
