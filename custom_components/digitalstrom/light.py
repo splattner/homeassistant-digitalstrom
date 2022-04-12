@@ -183,10 +183,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
                 self._state = False
                 await self.async_update_ha_state()
 
-        _LOGGER.debug(
-            f"Register callback for {self._scene_off.name}"
-        )
-
+        _LOGGER.debug(f"Register callback for {self._scene_off.name}")
         self._listener.register(callback=event_callback)
 
     @property
