@@ -39,7 +39,9 @@ class DSWebsocketEventListener:
                     DSLog.logger.warn(f"DS websocket got unknown command: {msg}")
 
     async def stop(self):
-        if self._ws is not None:
+
+
+        if self._ws is not None and not self._ws.closed:
             await self._ws.close()
             self._ws = None
 

@@ -47,7 +47,7 @@ class DSRequestHandler:
                 # bump interval for the next possible attempt
                 backoff_interval = backoff_interval * backoff
 
-            _LOGGER.debug("Raw Request to {url}, attempt {attempt} of {retries}".format(url = url, attempt=attempt, retries=retries))
+            _LOGGER.debug("Raw Request to {url}, remaining attempts {attempt} of {retries}".format(url = url, attempt = attempt - 1, retries = retries))
 
             # disable ssl verification for most servers miss valid certificates
             async with await self.get_aiohttp_session() as session:
