@@ -118,7 +118,7 @@ class DigitalstromScene(Scene):
 
     @property
     def name(self) -> str:
-        return self._scene.name
+        return self._scene.scene_name
 
     @property
     def unique_id(self) -> str:

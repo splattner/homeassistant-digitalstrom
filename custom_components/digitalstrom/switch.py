@@ -132,7 +132,7 @@ class DigitalstromSwitch(RestoreEntity, SwitchEntity):
 
     @property
     def name(self) -> str:
-        return self._scene_on.name
+        return self._scene_on.scene_name
 
     @property
     def unique_id(self) -> str:

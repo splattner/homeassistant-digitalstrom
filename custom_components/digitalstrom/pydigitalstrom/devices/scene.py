@@ -18,26 +18,28 @@ class DSScene(DSDevice):
         *args,
         **kwargs
     ):
-        self.zone_id = zone_id
-        self.zone_name = zone_name
-        self.scene_id = scene_id
-        self.scene_name = scene_name
+        self._scene_id = scene_id
+        self._scene_name = scene_name.replace("SCENE_","").title()
 
         device_id = "{zone_id}_{scene_id}".format(
-            zone_id=self.zone_id, scene_id=self.scene_id
+            zone_id=zone_id, scene_id=self._scene_id
         )
         device_name = "{zone} / {name}".format(
-            zone=self.zone_name, name=self.scene_name
+            zone=zone_name, name=self._scene_name
         )
 
         super().__init__(
-            client=client, device_id=device_id, device_name=device_name, *args, **kwargs
+            client=client, device_id=device_id, device_name=device_name, zone_name=zone_name, zone_id=zone_id, *args, **kwargs
         )
 
     async def turn_on(self):
         await self.request(
-            url=self.URL_TURN_ON.format(zone_id=self.zone_id, scene_id=self.scene_id)
+            url=self.URL_TURN_ON.format(zone_id=self._zone_id, scene_id=self._scene_id)
         )
+
+    @property
+    def scene_name(self):
+        return self._scene_name
 
 
 class DSColorScene(DSDevice):
@@ -57,26 +59,28 @@ class DSColorScene(DSDevice):
         *args,
         **kwargs
     ):
-        self.zone_id = zone_id
-        self.zone_name = zone_name
-        self.scene_id = scene_id
-        self.scene_name = scene_name
-        self.color = color
+        self._scene_id = scene_id
+        self._scene_name = scene_name.replace("SCENE_","").title()
+        self._color = color
 
         device_id = "{zone_id}_{color}_{scene_id}".format(
-            zone_id=self.zone_id, color=self.color, scene_id=self.scene_id
+            zone_id=zone_id, color=self._color, scene_id=self._scene_id
         )
         device_name = "{zone} / {name}".format(
-            zone=self.zone_name, name=self.scene_name
+            zone=zone_name, name=self._scene_name
         )
 
         super().__init__(
-            client=client, device_id=device_id, device_name=device_name, *args, **kwargs
+            client=client, device_id=device_id, device_name=device_name, zone_name=zone_name, zone_id=zone_id, *args, **kwargs
         )
 
     async def turn_on(self):
         await self.request(
             url=self.URL_TURN_ON.format(
-                zone_id=self.zone_id, color=self.color, scene_id=self.scene_id
+                zone_id=self._zone_id, color=self._color, scene_id=self._scene_id
             )
         )
+
+    @property
+    def scene_name(self):
+        return self._scene_name
