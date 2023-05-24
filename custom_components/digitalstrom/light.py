@@ -188,7 +188,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
 
     @property
     def name(self) -> str:
-        return self._scene_off.name
+        return self._scene_off.scene_name
 
     @property
     def unique_id(self) -> str:
