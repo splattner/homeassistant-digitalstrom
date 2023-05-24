@@ -135,8 +135,8 @@ class DigitalstromScene(Scene):
     def device_info(self) -> dict:
         """Return information about the device."""
         return {
-            "identifiers": {(DOMAIN, self._scene.unique_id)},
-            "name": self._scene.name,
-            "model": "DSScene",
+            "identifiers": {(DOMAIN, self._scene.zone_id)},
+            "name": self._scene.zone_name,
+            "model": "Digitalstrom Zone",
             "manufacturer": "digitalSTROM AG",
         }

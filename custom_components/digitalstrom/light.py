@@ -249,8 +249,8 @@ class DigitalstromLight(RestoreEntity, LightEntity):
     def device_info(self) -> dict:
         """Return information about the device."""
         return {
-            "identifiers": {(DOMAIN, self._scene_off.unique_id)},
-            "name": self._scene_off.name,
-            "model": "DSLight",
+            "identifiers": {(DOMAIN, self._scene_off.zone_id)},
+            "name": self._scene_off.zone_name,
+            "model": "Digitalstrom Zone",
             "manufacturer": "digitalSTROM AG",
         }
