@@ -188,8 +188,8 @@ class DigitalstromLight(RestoreEntity, LightEntity):
 
     @property
     def name(self) -> str:
-        if self._scene_off.scene_name == "Preset0":
-            return "Light"
+        if self._scene_off.scene_name.startswith("Preset"):
+            return self._scene_off.zone_name
 
         return self._scene_off.scene_name
 
