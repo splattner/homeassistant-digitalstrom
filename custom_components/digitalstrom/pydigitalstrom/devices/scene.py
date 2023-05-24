@@ -40,7 +40,11 @@ class DSScene(DSDevice):
     @property
     def scene_name(self):
         return self._scene_name
-
+    
+    @property
+    def scene_id(self):
+        return self._scene_id
+    
 
 class DSColorScene(DSDevice):
     URL_TURN_ON = (
@@ -84,3 +88,11 @@ class DSColorScene(DSDevice):
     @property
     def scene_name(self):
         return self._scene_name
+    
+    @property
+    def scene_id(self):
+        return self._scene_id
+    
+    @property
+    def color(self):
+        return self._color
