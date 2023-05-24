@@ -67,32 +67,32 @@ async def async_setup_entry(
                 ]:
                 continue
 
-            # Ignore never used scenes
-            if scene.scene_id in [
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_DEEP_OFF"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_STANDBY"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ZONE_ACTIVE"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_AUTO_STANDBY"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ABSENT"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_PRESENT"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_SLEEPING"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_WAKEUP"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_DOOR_BELL"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_PANIC"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ALARM_1"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ALARM_2"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ALARM_3"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ALARM_4"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_WIND"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_NO_WIND"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_RAIN"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_NO_RAIN"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_HAIL"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_NO_HAIL"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_POLLUTION"],
-                dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_BURGLARY"]
+        # Ignore never used scenes
+        if scene.scene_id in [
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_DEEP_OFF"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_STANDBY"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ZONE_ACTIVE"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_AUTO_STANDBY"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ABSENT"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_PRESENT"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_SLEEPING"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_WAKEUP"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_DOOR_BELL"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_PANIC"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ALARM_1"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ALARM_2"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ALARM_3"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ALARM_4"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_WIND"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_NO_WIND"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_RAIN"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_NO_RAIN"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_HAIL"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_NO_HAIL"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_POLLUTION"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_BURGLARY"]
             ]:
-                continue
+            continue
 
         _LOGGER.info(f"adding scene {scene.scene_id}: {scene.name}")
         scenes.append(DigitalstromScene(scene=scene, config_entry=entry))
