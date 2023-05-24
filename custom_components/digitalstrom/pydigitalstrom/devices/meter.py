@@ -39,7 +39,7 @@ class DSMeter(DSDevice):
         self.dsuid = dsuid
 
         super().__init__(
-            client=client, device_id="", device_name="", *args, **kwargs
+            client=client, device_id="", device_name="", zone_name="", zone_id="", *args, **kwargs
         )
 
     async def async_init(self):
