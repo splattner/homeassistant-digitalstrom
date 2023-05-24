@@ -79,6 +79,7 @@ async def async_setup_entry(
             dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_WAKEUP"],
             dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_DOOR_BELL"],
             dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_PANIC"],
+            dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_FIRE"],
             dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ALARM_1"],
             dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ALARM_2"],
             dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_ALARM_3"],
