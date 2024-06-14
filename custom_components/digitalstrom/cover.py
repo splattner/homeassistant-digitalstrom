@@ -2,7 +2,7 @@
 import logging
 from typing import Callable, Union
 
-from homeassistant.components.cover import CoverEntity, SUPPORT_CLOSE, SUPPORT_OPEN
+from homeassistant.components.cover import CoverEntity, CoverEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
@@ -87,7 +87,7 @@ class DigitalstromCover(CoverEntity):
     @property
     def supported_features(self) -> int:
         """Flag supported features."""
-        return SUPPORT_OPEN | SUPPORT_CLOSE
+        return CoverEntityFeature.SUPPORT_OPEN | CoverEntityFeature.SUPPORT_CLOSE
 
     @property
     def name(self) -> str:
