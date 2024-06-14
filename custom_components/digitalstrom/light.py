@@ -145,7 +145,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
     
     @property
     def supported_color_modes(self):
-        supported_color_modes = [ColorMode.ONOFF]
+        supported_color_modes = {ColorMode.ONOFF}
         return supported_color_modes
 
     @property
