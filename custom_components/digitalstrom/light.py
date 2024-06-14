@@ -11,7 +11,7 @@ from homeassistant.components.light import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_ON, CONF_HOST, CONF_PORT
 from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.core import HomeAssistant
 from .pydigitalstrom.client import DSClient
 from .pydigitalstrom import constants as dsconst
@@ -109,7 +109,7 @@ async def async_setup_entry(
 class DigitalstromLight(RestoreEntity, LightEntity):
     def __init__(
         self,
-        hass: HomeAssistantType,
+        hass: HomeAssistant,
         scene_on: Union[DSScene, DSColorScene],
         scene_off: Union[DSScene, DSColorScene],
         listener: DSWebsocketEventListener,
@@ -117,7 +117,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
         *args,
         **kwargs,
     ):
-        self._hass: HomeAssistantType = hass
+        self._hass: HomeAssistant = hass
         self._scene_on: Union[DSScene, DSColorScene] = scene_on
         self._scene_off: Union[DSScene, DSColorScene] = scene_off
         self._listener: DSWebsocketEventListener = listener
@@ -138,8 +138,14 @@ class DigitalstromLight(RestoreEntity, LightEntity):
         return support
     
     @property
+    def color_mode(self):
+        color_mode = ColorMode.ONOFF
+        return color_mode
+
+    
+    @property
     def supported_color_modes(self):
-        supported_color_modes = ColorMode.ONOFF
+        supported_color_modes = [ColorMode.ONOFF]
         return supported_color_modes
 
     @property
