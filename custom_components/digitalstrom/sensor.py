@@ -5,7 +5,8 @@ from typing import Callable, Union
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import POWER_WATT, ENERGY_WATT_HOUR, CONF_HOST, CONF_PORT
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.helpers.typing import ConfigType
+from homeassistant.core import HomeAssistant
 from .pydigitalstrom.client import DSClient
 from .pydigitalstrom.devices.meter import DSMeter
 from homeassistant.util import dt
@@ -18,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_platform(
-    hass: HomeAssistantType,
+    hass: HomeAssistant,
     config: ConfigType,
     async_add_devices: Callable,
     discovery_info: dict = None,
@@ -28,7 +29,7 @@ async def async_setup_platform(
 
 
 async def async_setup_entry(
-    hass: HomeAssistantType, 
+    hass: HomeAssistant, 
     entry: ConfigEntry, 
     async_add_entities: Callable
 ) -> None:
@@ -64,12 +65,12 @@ async def async_setup_entry(
 class DigitalstromConsumptionMeter(SensorEntity):
     def __init__(
         self,
-        hass: HomeAssistantType,
+        hass: HomeAssistant,
         dsmeter: DSMeter,
         *args,
         **kwargs,
     ):
-        self._hass: HomeAssistantType = hass
+        self._hass: HomeAssistant = hass
         self._dsmeter: DSMeter = dsmeter
         self._state: int = None
         super().__init__(*args, **kwargs)
@@ -120,12 +121,12 @@ class DigitalstromConsumptionMeter(SensorEntity):
 class DigitalstromEnergyMeter(SensorEntity):
     def __init__(
         self,
-        hass: HomeAssistantType,
+        hass: HomeAssistant,
         dsmeter: DSMeter,
         *args,
         **kwargs,
     ):
-        self._hass: HomeAssistantType = hass
+        self._hass: HomeAssistant = hass
         self._dsmeter: DSMeter = dsmeter
         self._state: int = None
         super().__init__(*args, **kwargs)

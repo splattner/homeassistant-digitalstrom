@@ -4,7 +4,6 @@ import logging
 import socket
 import urllib3
 
-from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
@@ -16,10 +15,9 @@ from homeassistant.const import (
     EVENT_HOMEASSISTANT_START,
     EVENT_HOMEASSISTANT_STOP,
 )
-from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryNotReady, InvalidStateError
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
-from homeassistant.util import slugify
+from homeassistant.helpers.typing import ConfigType
+from homeassistant.core import HomeAssistant
 
 from .pydigitalstrom.client import DSClient
 from .pydigitalstrom.exceptions import DSException
@@ -39,7 +37,7 @@ _LOGGER = logging.getLogger(__name__)
 COMPONENT_TYPES = ["light", "switch", "cover", "scene", "sensor"]
 
 
-async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """
     load configuration for digitalSTROM component
     """
@@ -54,7 +52,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
     return True
 
 
-async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """
     set up digitalSTROM component from config entry
     """

@@ -5,7 +5,8 @@ from typing import Callable, Union
 from homeassistant.components.scene import Scene
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.helpers.typing import ConfigType
+from homeassistant.core import HomeAssistant
 from .pydigitalstrom import constants
 from .pydigitalstrom.client import DSClient
 from .pydigitalstrom import constants as dsconst
@@ -18,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_platform(
-    hass: HomeAssistantType,
+    hass: HomeAssistant,
     config: ConfigType,
     async_add_devices: Callable,
     discovery_info: dict = None,
@@ -28,7 +29,7 @@ async def async_setup_platform(
 
 
 async def async_setup_entry(
-    hass: HomeAssistantType, entry: ConfigEntry, async_add_entities: Callable
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: Callable
 ) -> None:
     entry_slug: str = slugify_entry(
         host=entry.data[CONF_HOST], port=entry.data[CONF_PORT]

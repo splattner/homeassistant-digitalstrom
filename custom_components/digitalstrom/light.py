@@ -4,13 +4,15 @@ from typing import Callable, Union
 
 from homeassistant.components.light import (
     LightEntity,
-    SUPPORT_EFFECT,
+    LightEntityFeature,
+    ColorMode,
     ATTR_EFFECT,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_ON, CONF_HOST, CONF_PORT
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.core import HomeAssistant
 from .pydigitalstrom.client import DSClient
 from .pydigitalstrom import constants as dsconst
 from .pydigitalstrom.devices.scene import DSScene, DSColorScene
@@ -23,7 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_platform(
-    hass: HomeAssistantType,
+    hass: HomeAssistant,
     config: ConfigType,
     async_add_devices: Callable,
     discovery_info: dict = None,
@@ -33,7 +35,7 @@ async def async_setup_platform(
 
 
 async def async_setup_entry(
-    hass: HomeAssistantType, entry: ConfigEntry, async_add_entities: Callable
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: Callable
 ) -> None:
     entry_slug: str = slugify_entry(
         host=entry.data[CONF_HOST], port=entry.data[CONF_PORT]
@@ -122,6 +124,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
         self._state: bool = None
         self._scene_effects = effects
         self._effect = ""
+
         super().__init__(*args, **kwargs)
 
         self.register_callback()
@@ -129,10 +132,15 @@ class DigitalstromLight(RestoreEntity, LightEntity):
     @property
     def supported_features(self):
         """Flag supported features."""
-        support = SUPPORT_EFFECT
+        support = LightEntityFeature.EFFECT
 
 
         return support
+    
+    @property
+    def supported_color_modes(self):
+        supported_color_modes = ColorMode.ONOFF
+        return supported_color_modes
 
     @property
     def effect(self):
