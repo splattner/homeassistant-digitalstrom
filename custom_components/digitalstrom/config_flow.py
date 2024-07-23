@@ -3,11 +3,7 @@ from urllib.parse import urlparse
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.components.ssdp import (
-    ATTR_UPNP_MANUFACTURER,
-    ATTR_SSDP_LOCATION,
-    ATTR_UPNP_FRIENDLY_NAME,
-)
+
 from homeassistant.const import (
     CONF_HOST,
     CONF_PORT,
@@ -142,43 +138,3 @@ class DigitalStromConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
             errors=errors,
         )
-
-    async def async_step_ssdp(self, discovery_info):
-        """
-        Handle a discovered digitalSTROM server.
-        
-        This will prefill the device data and redirect to the user form
-        to check and complete information.
-        """
-
-        # something that is not a digitalSTROM server has been discovered
-        if discovery_info.get(ATTR_UPNP_MANUFACTURER) not in DIGITALSTROM_MANUFACTURERS:
-            return self.async_abort(reason="not_digitalstrom_server")
-
-        # get host from ssdp location
-        parseresult = urlparse(discovery_info.get(ATTR_SSDP_LOCATION))
-        host = str(parseresult.netloc)
-        # cut off the port since it's not the expected one anyway
-        if ":" in host:
-            host, _port = host.split(":")
-
-        # device already known, filter duplicates
-        device_slug = slugify_entry(host=host, port=DEFAULT_PORT)
-        if device_slug in initialized_devices(self.hass):
-            return self.async_abort(reason="already_configured")
-
-        # add to discovered devices
-        if device_slug in self.discovered_devices:
-            return self.async_abort(reason="already_discovered")
-        self.discovered_devices.append(device_slug)
-
-        # pre-fill schema and let the user complete it
-        self.device_config = {
-            CONF_HOST: host,
-            CONF_PORT: DEFAULT_PORT,
-            CONF_USERNAME: DEFAULT_USERNAME,
-            CONF_PASSWORD: "",
-            CONF_ALIAS: discovery_info.get(ATTR_UPNP_FRIENDLY_NAME),
-            CONF_DELAY: DEFAULT_DELAY,
-        }
-        return await self.async_step_user()

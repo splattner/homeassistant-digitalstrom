@@ -10,8 +10,6 @@
 
 This integration makes digitalSTROM lights, covers, switches and scenes available in Home Assistant.
 
-It supports config flows (and would support SSDP discovery if it was available to custom components) so that you can easily add your digitalSTROM server from the Home Assistant frontend (Configuration -> Integrations).
-
 However it does not support YAML config setup (anymore). The future is the frontend!
 
 Please read [info.md](info.md) carefully to understand how this integration works with digitalSTROM features and why devices cannot be controlled directly.

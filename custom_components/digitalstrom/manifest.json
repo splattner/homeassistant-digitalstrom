@@ -8,11 +8,5 @@
   "codeowners": [
     "@splattner"
   ],
-  "config_flow": true,
-  "ssdp": {
-    "manufacturer": [
-      "digitalSTROM AG",
-      "aizo ag"
-    ]
-  }
+  "config_flow": true
 }
