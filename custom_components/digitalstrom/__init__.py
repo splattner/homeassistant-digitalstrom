@@ -14,6 +14,7 @@ from homeassistant.const import (
     CONF_TOKEN,
     EVENT_HOMEASSISTANT_START,
     EVENT_HOMEASSISTANT_STOP,
+    Platform,
 )
 from homeassistant.exceptions import ConfigEntryNotReady, InvalidStateError
 from homeassistant.helpers.typing import ConfigType
@@ -34,7 +35,8 @@ from .util import slugify_entry
 
 _LOGGER = logging.getLogger(__name__)
 
-COMPONENT_TYPES = ["light", "switch", "cover", "scene", "sensor"]
+
+PLATFORMS = [Platform.LIGHT, Platform.MEDIA_PLAYER, Platform.SWITCH, Platform.COVER, Platform.SCENE, Platform.SENSO]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -97,11 +99,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # we're connected
     _LOGGER.debug(f"Successfully retrieved session token from digitalSTROM server at {client.host}")
 
-    # register devices
-    for component in COMPONENT_TYPES:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, component)
-        )
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
 
     # start websocket listener and action delayer loops on hass startup
     async def digitalstrom_start_loops(event):
