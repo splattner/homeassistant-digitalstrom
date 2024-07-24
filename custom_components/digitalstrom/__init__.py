@@ -105,16 +105,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # start websocket listener and action delayer loops on hass startup
     async def digitalstrom_start_loops(event):
         _LOGGER.info(f"loops started for digitalSTROM server at {client.host}")
-        hass.async_create_background_task(listener.start, "websocket-start")
-        hass.async_create_background_task(client.stack.start, "requesthandler-start")
+        hass.async_create_background_task(listener.start(), "websocket-start")
+        hass.async_create_background_task(client.stack.start(), "requesthandler-start")
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, digitalstrom_start_loops)
 
     # start websocket listener and action delayer loops on hass shutdown
     async def digitalstrom_stop_loops(event):
         _LOGGER.info(f"loops stopped for digitalSTROM server at {client.host}")
-        hass.async_create_background_task(client.stack.stop, "websocket-stop")
-        hass.async_create_background_task(listener.stop, "requesthandler-stop")
+        hass.async_create_background_task(client.stack.stop(), "websocket-stop")
+        hass.async_create_background_task(listener.stop(), "requesthandler-stop")
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, digitalstrom_stop_loops)
 
