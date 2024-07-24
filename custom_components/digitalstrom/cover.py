@@ -5,7 +5,8 @@ from typing import Callable, Union
 from homeassistant.components.cover import CoverEntity, CoverEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.helpers.typing import ConfigType
+from homeassistant.core import HomeAssistant
 from .pydigitalstrom.client import DSClient
 from .pydigitalstrom import constants as dsconst
 from .pydigitalstrom.devices.scene import DSScene, DSColorScene
@@ -18,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_platform(
-    hass: HomeAssistantType,
+    hass: HomeAssistant,
     config: ConfigType,
     async_add_devices: Callable,
     discovery_info: dict = None,
@@ -28,7 +29,7 @@ async def async_setup_platform(
 
 
 async def async_setup_entry(
-    hass: HomeAssistantType, entry: ConfigEntry, async_add_entities: Callable
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: Callable
 ) -> None:
     entry_slug: str = slugify_entry(host=entry.data[CONF_HOST], port=entry.data[CONF_PORT])
 
@@ -70,14 +71,14 @@ async def async_setup_entry(
 class DigitalstromCover(CoverEntity):
     def __init__(
         self,
-        hass: HomeAssistantType,
+        hass: HomeAssistant,
         scene_on: DSColorScene,
         scene_off: DSColorScene,
         listener: DSWebsocketEventListener,
         *args,
         **kwargs,
     ):
-        self._hass: HomeAssistantType = hass
+        self._hass: HomeAssistant = hass
         self._scene_on: DSColorScene = scene_on
         self._scene_off: DSColorScene = scene_off
         self._listener: DSWebsocketEventListener = listener

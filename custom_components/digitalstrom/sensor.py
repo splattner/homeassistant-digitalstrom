@@ -4,7 +4,7 @@ from typing import Callable, Union
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import POWER_WATT, ENERGY_WATT_HOUR, CONF_HOST, CONF_PORT
+from homeassistant.const import UnitOfPower, UnitOfEnergy, CONF_HOST, CONF_PORT
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.core import HomeAssistant
 from .pydigitalstrom.client import DSClient
@@ -99,7 +99,7 @@ class DigitalstromConsumptionMeter(SensorEntity):
     @property
     def unit_of_measurement(self):
         """Return the unit the value is expressed in."""
-        return POWER_WATT
+        return UnitOfPower.WATT
 
     @property
     def device_class(self):
@@ -155,7 +155,7 @@ class DigitalstromEnergyMeter(SensorEntity):
     @property
     def unit_of_measurement(self):
         """Return the unit the value is expressed in."""
-        return ENERGY_WATT_HOUR
+        return UnitOfEnergy.WATT_HOUR
         
     @property
     def state_class(self):
