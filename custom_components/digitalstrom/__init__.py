@@ -36,7 +36,7 @@ from .util import slugify_entry
 _LOGGER = logging.getLogger(__name__)
 
 
-PLATFORMS = [Platform.LIGHT, Platform.MEDIA_PLAYER, Platform.SWITCH, Platform.COVER, Platform.SCENE, Platform.SENSO]
+PLATFORMS = [Platform.LIGHT, Platform.MEDIA_PLAYER, Platform.SWITCH, Platform.COVER, Platform.SCENE, Platform.SENSOR]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
