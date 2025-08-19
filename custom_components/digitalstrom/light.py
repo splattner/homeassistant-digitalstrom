@@ -180,14 +180,24 @@ class DigitalstromLight(RestoreEntity, LightEntity):
             group_id: int = int(event["properties"]["groupID"])
             scene_id: int = int(event["properties"]["sceneID"])
 
-            # device turned on or broadcast turned on
+            # Map preset scene ids to effect names
+            preset_map = {
+                dsconst.SCENES["PRESET"]["SCENE_PRESET1"]: "PRESET1",
+                dsconst.SCENES["PRESET"]["SCENE_PRESET2"]: "PRESET2",
+                dsconst.SCENES["PRESET"]["SCENE_PRESET3"]: "PRESET3",
+                dsconst.SCENES["PRESET"]["SCENE_PRESET4"]: "PRESET4",
+            }
+
+            # device turned on or broadcast turned on (handle PRESET1..PRESET4)
             if (
                 self._scene_on.zone_id == zone_id
                 and self._scene_on.color == group_id
-                and (self._scene_on.scene_id == scene_id or dsconst.SCENES["PRESET"]["SCENE_PRESET1"] == scene_id)
+                and (self._scene_on.scene_id == scene_id or scene_id in preset_map)
             ):
                 self._state = True
-                await self.async_update_ha_state()
+                # set effect according to which preset was called (default to PRESET1)
+                self._effect = preset_map.get(scene_id, "PRESET1")
+                await self.async_write_ha_state()
             # device turned off or broadcast turned off
             elif (
                 self._scene_off.zone_id == zone_id
@@ -195,7 +205,8 @@ class DigitalstromLight(RestoreEntity, LightEntity):
                 and (self._scene_off.scene_id == scene_id or dsconst.SCENES["PRESET"]["SCENE_PRESET0"] == scene_id)
             ):
                 self._state = False
-                await self.async_update_ha_state()
+                self._effect = ""
+                await self.async_write_ha_state()
 
         _LOGGER.debug(f"Register callback for {self._scene_off.name}")
         self._listener.register(callback=event_callback)
