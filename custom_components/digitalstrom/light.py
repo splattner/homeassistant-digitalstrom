@@ -197,7 +197,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
                 self._state = True
                 # set effect according to which preset was called (default to PRESET1)
                 self._effect = preset_map.get(scene_id, "PRESET1")
-                await self.async_write_ha_state()
+                self.async_write_ha_state()
             # device turned off or broadcast turned off
             elif (
                 self._scene_off.zone_id == zone_id
@@ -206,7 +206,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
             ):
                 self._state = False
                 self._effect = ""
-                await self.async_write_ha_state()
+                self.async_write_ha_state()
 
         _LOGGER.debug(f"Register callback for {self._scene_off.name}")
         self._listener.register(callback=event_callback)
