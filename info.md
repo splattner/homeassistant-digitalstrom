@@ -37,7 +37,7 @@ Every scene that is not an area light or cover scene is exposed as a regular sce
 
 ### Meters
 
-Every power meter.
+Every power meter that delivers readings, with a power and an energy sensor. Meters that don't deliver any (for example virtual ones from the vdc-bridge) get no sensors. A meter that only starts delivering later is picked up when the integration is reloaded.
 
 ## Options and authentication
 
