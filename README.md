@@ -30,6 +30,9 @@ The tests use [pytest-homeassistant-custom-component](https://github.com/Matthew
 
 ```
 python3.13 -m venv .venv && . .venv/bin/activate
-pip install -r requirements_test.txt
+pip install -r requirements_test.txt ruff
+ruff check .
 pytest
 ```
+
+The same checks run on every pull request (`.github/workflows`), together with [hassfest](https://developers.home-assistant.io/blog/2020/04/16/hassfest/) and the HACS validation.

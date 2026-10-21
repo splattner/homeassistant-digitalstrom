@@ -106,3 +106,24 @@ async def test_unique_id_is_added_to_old_entries(hass, dss, setup_entry):
     entry = await setup_entry()
 
     assert entry.unique_id == f"127_0_0_1_{dss.port}"
+
+
+async def test_setup_retries_initialization_once(hass, dss, setup_entry):
+    """the first connection to a dSS often fails, the second one works"""
+    dss.fail_requests = 1
+
+    entry = await setup_entry()
+
+    assert entry.state is ConfigEntryState.LOADED
+
+
+async def test_token_rejected_on_second_attempt_starts_reauth(hass, dss, setup_entry):
+    # first attempt: server error, second attempt: token is rejected
+    dss.fail_requests = 1
+    dss.reject_app_token = True
+
+    entry = await setup_entry()
+
+    assert entry.state is ConfigEntryState.SETUP_ERROR
+    [flow] = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+    assert flow["context"]["source"] == "reauth"

@@ -100,8 +100,7 @@ async def async_setup_entry(
             )
         )
 
-    device: DigitalstromLight
-    async_add_entities(device for device in devices)
+    async_add_entities(devices)
 
 
 class DigitalstromLight(RestoreEntity, LightEntity):

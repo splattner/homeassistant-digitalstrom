@@ -13,6 +13,7 @@ from custom_components.digitalstrom.pydigitalstrom.client import DSClient
 from custom_components.digitalstrom.pydigitalstrom.exceptions import (
     DSAuthenticationException,
     DSCommandFailedException,
+    DSException,
     DSRequestException,
 )
 from custom_components.digitalstrom.pydigitalstrom.websocket import (
@@ -206,3 +207,83 @@ async def test_websocket_reconnects_and_isolates_callbacks(
     assert received[:3] == [1, 2, 3]
     # the session token is sent as cookie header
     assert dss.ws_cookies[0] == "token=sessiontoken"
+
+
+async def test_websocket_ignores_garbage_messages(dss, client, monkeypatch):
+    dss.ws_mode = "hold"
+    received = []
+
+    async def callback(event):
+        received.append(event["properties"]["n"])
+
+    listener = DSWebsocketEventListener(client, event_name="callScene")
+    listener.register(callback)
+    task = asyncio.create_task(listener.start())
+    try:
+        for _ in range(100):
+            if dss._sockets:
+                break
+            await asyncio.sleep(0.02)
+
+        await dss.push_raw("this is not json")
+        await dss.push_raw(b"\x00\x01")
+        await dss.push_event({"name": "somethingElse", "properties": {"n": 0}})
+        await dss.push_event({"properties": {"n": 0}})  # no name
+        await dss.push_event({"name": "callScene", "properties": {"n": 1}})
+        for _ in range(100):
+            if received:
+                break
+            await asyncio.sleep(0.02)
+    finally:
+        await listener.stop()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    assert received == [1]
+
+
+async def test_connection_errors_are_retried(socket_enabled):
+    attempts = []
+
+    class Counting(DSAppTokenHandler):
+        async def get_aiohttp_session(self):
+            attempts.append(1)
+            return await super().get_aiohttp_session()
+
+    # nothing is listening on port 1
+    handler = Counting("127.0.0.1", 1, "u", "p")
+
+    with pytest.raises(DSRequestException, match="request failed"):
+        await handler.raw_request("/json/x", retries=2, interval=0.01, backoff=1)
+
+    assert len(attempts) == 3
+
+
+async def test_invalid_json_body_is_a_request_exception(dss):
+    handler = DSAppTokenHandler(dss.host, dss.port, "u", "p")
+
+    with pytest.raises(DSRequestException, match="json"):
+        await handler.raw_request("/json/test/bad_json", retries=0)
+
+
+async def test_invalid_api_responses_are_dsexceptions_but_not_auth_errors(dss, client):
+    dss.invalid_api_response = True
+    handler = DSAppTokenHandler(dss.host, dss.port, "u", "p")
+
+    with pytest.raises(DSException, match="invalid api response") as token_error:
+        await handler.request_apptoken()
+    with pytest.raises(DSException, match="invalid api response") as session_error:
+        await client.get_session_token()
+
+    assert not isinstance(token_error.value, DSAuthenticationException)
+    assert not isinstance(session_error.value, DSAuthenticationException)
+
+
+async def test_command_stack_start_twice_keeps_one_task(client):
+    await client.stack.start()
+    first = client.stack._task
+    await client.stack.start()
+
+    assert client.stack._task is first
+    await client.stack.stop()

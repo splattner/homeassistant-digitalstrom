@@ -56,6 +56,8 @@ class FakeDSS:
         self.reject_app_token = False  # revoked app token
         self.fail_enable_token = False
         self.http_status = None  # answer every json request with this status
+        self.fail_requests = 0  # answer this many json requests with status 500
+        self.invalid_api_response = False  # ok, but without the expected result
         self.fail_scene_calls = 0
         # "drop": send one event and close, clients have to reconnect
         # "hold": keep the connection open, use push_event
@@ -86,11 +88,17 @@ class FakeDSS:
 
     @web.middleware
     async def _middleware(self, request, handler):
-        if self.http_status and request.path.startswith("/json/"):
-            return web.Response(status=self.http_status, text="server error")
+        if request.path.startswith("/json/"):
+            if self.http_status:
+                return web.Response(status=self.http_status, text="server error")
+            if self.fail_requests > 0:
+                self.fail_requests -= 1
+                return web.Response(status=500, text="server error")
         return await handler(request)
 
     async def _request_application_token(self, request):
+        if self.invalid_api_response:
+            return self._ok({})
         return self._ok({"applicationToken": self.app_token})
 
     async def _login(self, request):
@@ -105,6 +113,8 @@ class FakeDSS:
         return self._ok()
 
     async def _login_application(self, request):
+        if self.invalid_api_response:
+            return self._ok({})
         if self.reject_app_token:
             return self._failed("Application-Authentication failed")
         return self._ok({"token": "sessiontoken"})
@@ -118,6 +128,9 @@ class FakeDSS:
 
     async def _error(self, request):
         return web.Response(status=500, text="kaboom")
+
+    async def _bad_json(self, request):
+        return web.Response(content_type="application/json", text="{not json")
 
     async def _slow(self, request):
         await asyncio.sleep(0.5)
@@ -160,6 +173,14 @@ class FakeDSS:
         """send an event to all connected websocket clients"""
         for socket in list(self._sockets):
             await socket.send_json(event)
+
+    async def push_raw(self, data: str | bytes) -> None:
+        """send something that is not a json event"""
+        for socket in list(self._sockets):
+            if isinstance(data, bytes):
+                await socket.send_bytes(data)
+            else:
+                await socket.send_str(data)
 
     async def push_scene(self, zone_id: int, group_id: int, scene_id: int) -> None:
         await self.push_event(
@@ -209,6 +230,7 @@ class FakeDSS:
         get("/json/metering/getLatest", self._metering)
         get("/json/zone/callScene", self._call_scene)
         get("/json/test/error", self._error)
+        get("/json/test/bad_json", self._bad_json)
         get("/json/test/slow", self._slow)
         get("/websocket", self._websocket)
         return app

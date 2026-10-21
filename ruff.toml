@@ -1,0 +1,6 @@
+target-version = "py313"
+
+[lint]
+# pyflakes (unused imports/variables, undefined names) and syntax errors; the
+# code base predates any formatter, so no style rules for now
+select = ["F", "E9"]

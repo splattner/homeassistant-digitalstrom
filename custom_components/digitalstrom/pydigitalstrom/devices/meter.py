@@ -3,9 +3,7 @@ from ..client import DSClient
 from ..devices.base import DSDevice
 
 from ..exceptions import (
-    DSException,
     DSCommandFailedException,
-    DSRequestException,
 )
 
 import logging

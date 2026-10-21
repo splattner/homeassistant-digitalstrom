@@ -50,8 +50,7 @@ async def async_setup_entry(
             )
         )
 
-    device: DigitalstromCover
-    async_add_entities(device for device in devices)
+    async_add_entities(devices)
 
 
 class DigitalstromCover(CoverEntity):

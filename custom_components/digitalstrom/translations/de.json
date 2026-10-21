@@ -1,6 +1,5 @@
 {
   "config": {
-    "title": "digitalSTROM",
     "step": {
       "user": {
         "title": "digitalSTROM einrichten",
