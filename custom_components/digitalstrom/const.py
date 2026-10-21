@@ -7,6 +7,9 @@ TITLE_FORMAT: str = "{alias} ({host}:{port})"
 
 CONF_DELAY: str = "delay"
 
+# fired on the event bus whenever a scene is called on the digitalSTROM server
+EVENT_SCENE_CALLED: str = "digitalstrom_scene_called"
+
 DEFAULT_HOST: str = "dss.local"
 DEFAULT_PORT: int = 8080
 DEFAULT_DELAY: int = 500

@@ -41,6 +41,7 @@ class DSClient(DSRequestHandler):
         self._last_request = None
         self._session_token = None
         self._scenes = dict()
+        self._zones = dict()
         self._meters = dict()
 
         from .commandstack import DSCommandStack
@@ -101,6 +102,7 @@ class DSClient(DSRequestHandler):
 
             zone_id = zone["ZoneID"]
             zone_name = zone["name"]
+            self._zones[zone_id] = zone_name
 
             _LOGGER.debug("Zone ID: {zone_id} Name: {zone_name}".format(zone_id = zone_id, zone_name=zone_name))
 
@@ -210,6 +212,10 @@ class DSClient(DSRequestHandler):
 
     def get_scenes(self):
         return self._scenes
+
+    def get_zone_name(self, zone_id: int):
+        """name of a zone, None for unknown or unnamed zones"""
+        return self._zones.get(zone_id)
 
     def get_meters(self):
         return self._meters
