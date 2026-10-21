@@ -1,5 +1,6 @@
 """Tests for the power meter sensors."""
 
+
 async def update(hass, entity_id: str) -> None:
     await hass.services.async_call(
         "homeassistant", "update_entity", {"entity_id": entity_id}, blocking=True
