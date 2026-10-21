@@ -11,6 +11,7 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.const import (
+    CONF_SCAN_INTERVAL,
     CONF_HOST,
     CONF_PORT,
     CONF_USERNAME,
@@ -25,7 +26,6 @@ from homeassistant.helpers.selector import (
     TextSelectorType,
 )
 
-from . import get_delay
 from .pydigitalstrom.apptokenhandler import DSAppTokenHandler
 from .pydigitalstrom.exceptions import DSAuthenticationException, DSException
 
@@ -36,15 +36,21 @@ from .const import (
     DEFAULT_HOST,
     DEFAULT_PORT,
     DEFAULT_DELAY,
+    DEFAULT_SCAN_INTERVAL,
     DEFAULT_USERNAME,
     MAX_DELAY,
+    MAX_SCAN_INTERVAL,
     MIN_DELAY,
+    MIN_SCAN_INTERVAL,
     TITLE_FORMAT,
 )
-from .util import get_session, slugify_entry
+from .util import get_option, get_session, slugify_entry
 
 PASSWORD_SELECTOR = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
 DELAY_VALIDATOR = vol.All(vol.Coerce(int), vol.Range(min=MIN_DELAY, max=MAX_DELAY))
+SCAN_INTERVAL_VALIDATOR = vol.All(
+    vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL, max=MAX_SCAN_INTERVAL)
+)
 
 
 def _error_key(err: DSException) -> str:
@@ -197,8 +203,15 @@ class DigitalStromOptionsFlow(OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Required(
-                        CONF_DELAY, default=get_delay(self.config_entry)
+                        CONF_DELAY,
+                        default=get_option(self.config_entry, CONF_DELAY, DEFAULT_DELAY),
                     ): DELAY_VALIDATOR,
+                    vol.Required(
+                        CONF_SCAN_INTERVAL,
+                        default=get_option(
+                            self.config_entry, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+                        ),
+                    ): SCAN_INTERVAL_VALIDATOR,
                 }
             ),
         )

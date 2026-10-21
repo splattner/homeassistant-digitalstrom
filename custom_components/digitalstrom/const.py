@@ -16,5 +16,9 @@ DEFAULT_DELAY: int = 500
 DEFAULT_USERNAME: str = "dssadmin"
 DEFAULT_ALIAS: str = "Apartment"
 
+DEFAULT_SCAN_INTERVAL: int = 30  # seconds between reading the meters
+MIN_SCAN_INTERVAL: int = 10
+MAX_SCAN_INTERVAL: int = 3600
+
 MIN_DELAY: int = 10
 MAX_DELAY: int = 10000

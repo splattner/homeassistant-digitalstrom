@@ -52,6 +52,10 @@ class FakeDSS:
         self.app_token = "apptoken"
         self.reachable_scenes = [0, 5]
         self.meters = []  # dSUIDs
+        self.meter_values = {}  # dSUID -> {"consumption": W, "energy": Wh}
+        self.fail_metering = False  # reading the meters fails, the rest works
+        self.metering_empty = False  # no readings available yet
+        self.metering_uppercase_dsid = False
         self.reject_login = False  # wrong username / password
         self.reject_app_token = False  # revoked app token
         self.fail_enable_token = False
@@ -66,6 +70,7 @@ class FakeDSS:
         # recordings
         self.login_params = None
         self.scene_calls = []
+        self.metering_requests = []  # (type, [dsid, ...])
         self.ws_connections = 0
         self.ws_cookies = []
         self._sockets = []
@@ -145,8 +150,26 @@ class FakeDSS:
         return self._ok({"value": f"Meter {dsuid}" if prop == "name" else f"dsid-{dsuid}"})
 
     async def _metering(self, request):
-        value = 1500.0 if request.query["type"] == "energy" else 42.0
-        return self._ok({"values": [{"value": value}]})
+        """getLatest for the dSIDs in .meters(a,b,...), dSID is dsid-<dSUID>"""
+        if self.fail_metering:
+            return web.Response(status=500, text="server error")
+        reading = request.query["type"]
+        dsids = request.query["from"].removeprefix(".meters(").removesuffix(")").split(",")
+        self.metering_requests.append((reading, dsids))
+
+        values = []
+        for dsid in [] if self.metering_empty else dsids:
+            dsuid = dsid.removeprefix("dsid-")
+            default = {"consumption": 42.0, "energy": 1500.0}
+            value = self.meter_values.get(dsuid, default)[reading]
+            values.append(
+                {
+                    "dsid": dsid.upper() if self.metering_uppercase_dsid else dsid,
+                    "value": value,
+                    "date": "2025-01-01 12:00:00",
+                }
+            )
+        return self._ok({"values": values})
 
     async def _websocket(self, request):
         self.ws_connections += 1

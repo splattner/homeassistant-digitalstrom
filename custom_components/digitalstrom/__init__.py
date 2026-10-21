@@ -20,7 +20,7 @@ from .pydigitalstrom.websocket import DSWebsocketEventListener
 
 from .const import CONF_DELAY, DEFAULT_DELAY
 from .events import async_create_scene_event_callback
-from .util import get_session, slugify_entry
+from .util import get_option, get_session, slugify_entry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,11 +37,6 @@ class DigitalstromData:
 
 
 type DigitalstromConfigEntry = ConfigEntry[DigitalstromData]
-
-
-def get_delay(entry: ConfigEntry) -> int:
-    """delay between commands, the options win over the initial setup"""
-    return entry.options.get(CONF_DELAY, entry.data.get(CONF_DELAY, DEFAULT_DELAY))
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: DigitalstromConfigEntry) -> bool:
@@ -71,7 +66,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: DigitalstromConfigEntry)
         port=entry.data[CONF_PORT],
         apptoken=entry.data[CONF_TOKEN],
         apartment_name=entry.data[CONF_ALIAS],
-        stack_delay=get_delay(entry),
+        stack_delay=get_option(entry, CONF_DELAY, DEFAULT_DELAY),
         session=get_session(hass),
     )
     listener = DSWebsocketEventListener(client=client, event_name="callScene")

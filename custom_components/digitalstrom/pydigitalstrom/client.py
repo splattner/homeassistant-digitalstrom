@@ -25,6 +25,7 @@ class DSClient(DSRequestHandler):
     URL_SESSIONTOKEN = "/json/system/loginApplication?loginToken={apptoken}"
 
     URL_METERS = "/json/property/getChildren?path=/apartment/dSMeters/"
+    URL_METERING_LATEST = "/json/metering/getLatest?from=.meters({dsids})&type={type}"
 
     def __init__(
         self,
@@ -219,3 +220,25 @@ class DSClient(DSRequestHandler):
 
     def get_meters(self):
         return self._meters
+
+    async def get_latest_metering(self, dsids: list, metering_type: str) -> dict:
+        """
+        latest values of several meters with a single request
+
+        :param dsids: dSIDs of the meters
+        :param metering_type: "consumption" (W) or "energy" (Wh)
+        :return: value by lower case dSID, meters without a value are missing
+        """
+        response = await self.request(
+            url=self.URL_METERING_LATEST.format(
+                dsids=",".join(dsids), type=metering_type
+            )
+        )
+        if "result" not in response:
+            raise DSCommandFailedException("no result in server response")
+
+        return {
+            str(entry["dsid"]).lower(): entry["value"]
+            for entry in response["result"].get("values", [])
+            if "dsid" in entry and entry.get("value") is not None
+        }
