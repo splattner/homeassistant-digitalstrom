@@ -24,6 +24,7 @@ Every scene that is called on the digitalSTROM server fires a `digitalstrom_scen
 | `zone_id`, `zone_name` | zone the scene was called in (`zone_name` is `null` for unnamed zones) |
 | `group_id` | group (color) the scene was called for, e.g. 1 for lights |
 | `scene_id`, `scene_name` | number and name of the scene (`scene_name` is `null` if unknown) |
+| `origin_device_id` | dSID of the device (e.g. the wall button) that caused the call, `null` if the server doesn't tell |
 | `properties` | everything the server sent with the event |
 
 Example automation that reacts to the door bell:
@@ -39,6 +40,8 @@ actions:
     data:
       message: "Someone is at the door ({{ trigger.event.data.zone_name }})"
 ```
+
+To react to one particular button, add its `origin_device_id` to `event_data`. Press the button while listening to the event (see below) to find the value.
 
 Use the *Events* tab in *Developer tools* to listen to `digitalstrom_scene_called` and see which scene numbers your buttons send.
 
