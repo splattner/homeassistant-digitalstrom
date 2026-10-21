@@ -6,6 +6,7 @@ import subprocess
 
 import pytest
 import pytest_asyncio
+from pytest_socket import socket_allow_hosts
 from aiohttp import web
 from homeassistant.config_entries import ConfigEntryState
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -291,10 +292,13 @@ class FakeDSS:
 
 @pytest_asyncio.fixture
 async def dss(ssl_context, socket_enabled):
+    # 127.0.0.2 is where tests "move" the server to
+    socket_allow_hosts(["127.0.0.1", "127.0.0.2"], allow_unix_socket=True)
     server = FakeDSS()
     runner = web.AppRunner(server.app())
     await runner.setup()
-    site = web.TCPSite(runner, server.host, 0, ssl_context=ssl_context)
+    # all loopback addresses (127.0.0.x), tests can "move" the server to another one
+    site = web.TCPSite(runner, "0.0.0.0", 0, ssl_context=ssl_context)
     await site.start()
     server.port = runner.addresses[0][1]
     yield server

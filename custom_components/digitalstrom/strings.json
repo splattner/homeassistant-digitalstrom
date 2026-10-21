@@ -19,6 +19,23 @@
           "username": "Username",
           "password": "Password"
         }
+      },
+      "reconfigure": {
+        "title": "Change the server",
+        "description": "Change the address or the name of this digitalSTROM server.",
+        "data": {
+          "host": "Server",
+          "port": "Port",
+          "alias": "Apartment name"
+        }
+      },
+      "reconfigure_credentials": {
+        "title": "Authenticate again",
+        "description": "The digitalSTROM server at {host} doesn't know the stored app token, it might be a different server. Enter your credentials to request a new one. They are not stored.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
       }
     },
     "error": {
@@ -27,7 +44,8 @@
     },
     "abort": {
       "already_configured": "This digitalSTROM server is already set up.",
-      "reauth_successful": "Authentication was successful."
+      "reauth_successful": "Authentication was successful.",
+      "reconfigure_successful": "The server was changed."
     }
   },
   "options": {
