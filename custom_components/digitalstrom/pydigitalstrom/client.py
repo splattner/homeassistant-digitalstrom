@@ -3,10 +3,10 @@ import time
 import logging
 
 import aiohttp
-import asyncio
 
 from .constants import GROUP_LIGHTS, SCENES, ALL_SCENES_BYNAME, ALL_SCENES_BYID
 from .exceptions import (
+    DSAuthenticationException,
     DSException,
     DSCommandFailedException,
     DSRequestException,
@@ -34,7 +34,7 @@ class DSClient(DSRequestHandler):
         apptoken: str,
         apartment_name: str,
         stack_delay: int = 500,
-        loop: asyncio.AbstractEventLoop = None,
+        session: aiohttp.ClientSession = None,
     ):
         self._apptoken = apptoken
         self._apartment_name = apartment_name
@@ -48,7 +48,7 @@ class DSClient(DSRequestHandler):
 
         self.stack = DSCommandStack(client=self, delay=stack_delay)
 
-        super().__init__(host=host, port=port, loop=loop)
+        super().__init__(host=host, port=port, session=session)
 
     async def request(self, url: str, **kwargs):
         """
@@ -71,9 +71,12 @@ class DSClient(DSRequestHandler):
         return data
 
     async def get_session_token(self):
-        data = await self.raw_request(
-            self.URL_SESSIONTOKEN.format(apptoken=self._apptoken)
-        )
+        try:
+            data = await self.raw_request(
+                self.URL_SESSIONTOKEN.format(apptoken=self._apptoken)
+            )
+        except DSCommandFailedException as err:
+            raise DSAuthenticationException("app token rejected by server") from err
         if "result" not in data or "token" not in data["result"]:
             raise DSException("invalid api response")
         return data["result"]["token"]

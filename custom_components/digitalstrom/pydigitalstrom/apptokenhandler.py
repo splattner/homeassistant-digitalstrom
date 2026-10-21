@@ -1,8 +1,7 @@
 import aiohttp
-import asyncio
 
 from .requesthandler import DSRequestHandler
-from .exceptions import DSException
+from .exceptions import DSAuthenticationException, DSCommandFailedException, DSException
 
 
 class DSAppTokenHandler(DSRequestHandler):
@@ -18,12 +17,12 @@ class DSAppTokenHandler(DSRequestHandler):
         port: int,
         username: str,
         password: str,
-        loop: asyncio.AbstractEventLoop = None,
+        session: aiohttp.ClientSession = None,
     ) -> None:
         self.username = username
         self.password = password
 
-        super().__init__(host=host, port=port, loop=loop)
+        super().__init__(host=host, port=port, session=session)
 
     async def request_apptoken(self) -> str:
         """
@@ -51,10 +50,13 @@ class DSAppTokenHandler(DSRequestHandler):
         get an authenticated temp token
         """
         # pass credentials as params so they get url-encoded
-        data = await self.raw_request(
-            self.URL_TEMPTOKEN,
-            params=dict(user=self.username, password=self.password),
-        )
+        try:
+            data = await self.raw_request(
+                self.URL_TEMPTOKEN,
+                params=dict(user=self.username, password=self.password),
+            )
+        except DSCommandFailedException as err:
+            raise DSAuthenticationException("login failed") from err
         if "result" not in data or "token" not in data["result"]:
             raise DSException("invalid api response")
         return data["result"]["token"]
