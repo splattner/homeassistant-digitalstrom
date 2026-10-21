@@ -35,7 +35,8 @@
       "init": {
         "title": "digitalSTROM options",
         "data": {
-          "delay": "Delay between single commands (in ms)"
+          "delay": "Delay between single commands (in ms)",
+          "scan_interval": "Interval for reading the power meters (in seconds)"
         }
       }
     }

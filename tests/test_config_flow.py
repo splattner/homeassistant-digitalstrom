@@ -175,12 +175,13 @@ async def test_options_flow_changes_delay_and_reloads(hass, dss, setup_entry):
     assert result["type"] is FlowResultType.FORM
     assert result["data_schema"]({})["delay"] == 300  # current value is the default
 
+    assert result["data_schema"]({})["scan_interval"] == 30
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"delay": 50}
+        result["flow_id"], {"delay": 50, "scan_interval": 60}
     )
     await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options == {"delay": 50}
+    assert entry.options == {"delay": 50, "scan_interval": 60}
     assert entry.state is ConfigEntryState.LOADED
     assert entry.runtime_data.client.stack._delay == 50

@@ -35,7 +35,8 @@
       "init": {
         "title": "digitalSTROM Optionen",
         "data": {
-          "delay": "Verzögerung zwischen einzelnen Aufrufen (in ms)"
+          "delay": "Verzögerung zwischen einzelnen Aufrufen (in ms)",
+          "scan_interval": "Intervall zum Auslesen der Stromzähler (in Sekunden)"
         }
       }
     }

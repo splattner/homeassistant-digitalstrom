@@ -11,14 +11,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class DSMeter(DSDevice):
-    URL_GET_LATEST_CONSUMPTION= (
-        "/json/metering/getLatest?from=.meters({dsid})&type=consumption"
-    )
-
-    URL_GET_LATEST_ENERGY= (
-        "/json/metering/getLatest?from=.meters({dsid})&type=energy"
-    )
-
     URL_GET_METER_NAME= (
         "/json/property/getString?path=/apartment/dSMeters/{dsuid}/name"
     )
@@ -51,23 +43,3 @@ class DSMeter(DSDevice):
         if "result" not in response:
             raise DSCommandFailedException("no result in server response")
         self._id = response["result"]["value"]
-
-
-
-    async def get_latest(self):
-        response = await self._client.request(
-            url=self.URL_GET_LATEST_CONSUMPTION.format(dsid=self._id)
-        )
-        if "result" not in response:
-            raise DSCommandFailedException("no result in server response")
-
-        return response["result"]["values"][0]["value"]
-
-    async def get_latest_energy(self):
-        response = await self._client.request(
-            url=self.URL_GET_LATEST_ENERGY.format(dsid=self._id)
-        )
-        if "result" not in response:
-            raise DSCommandFailedException("no result in server response")
-
-        return response["result"]["values"][0]["value"]
