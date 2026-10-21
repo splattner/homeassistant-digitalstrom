@@ -19,6 +19,7 @@ from .pydigitalstrom.exceptions import DSAuthenticationException, DSException
 from .pydigitalstrom.websocket import DSWebsocketEventListener
 
 from .const import CONF_DELAY, DEFAULT_DELAY
+from .events import async_create_scene_event_callback
 from .util import get_session, slugify_entry
 
 _LOGGER = logging.getLogger(__name__)
@@ -95,6 +96,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: DigitalstromConfigEntry)
     _LOGGER.debug(f"Successfully retrieved session token from digitalSTROM server at {client.host}")
 
     entry.runtime_data = DigitalstromData(client=client, listener=listener)
+
+    # let automations react to scenes called anywhere (wall buttons, apps, ...)
+    entry.async_on_unload(
+        listener.register(
+            callback=async_create_scene_event_callback(hass, entry.entry_id, client)
+        )
+    )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
