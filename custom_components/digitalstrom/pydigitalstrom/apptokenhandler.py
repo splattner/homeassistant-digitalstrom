@@ -11,10 +11,8 @@ class DSAppTokenHandler(DSRequestHandler):
     URL_APPTOKEN = (
         "/json/system/requestApplicationToken?applicationName=" "homeassistant"
     )
-    URL_TEMPTOKEN = "/json/system/login?user={username}&password={password}"
-    URL_ACTIVATE = (
-        "/json/system/enableToken?applicationToken={apptoken}" "&token={temptoken}"
-    )
+    URL_TEMPTOKEN = "/json/system/login"
+    URL_ACTIVATE = "/json/system/enableToken"
 
     def __init__(
         self,
@@ -55,8 +53,10 @@ class DSAppTokenHandler(DSRequestHandler):
         """
         get an authenticated temp token
         """
+        # pass credentials as params so they get url-encoded
         data = await self.raw_request(
-            self.URL_TEMPTOKEN.format(username=self.username, password=self.password)
+            self.URL_TEMPTOKEN,
+            params=dict(user=self.username, password=self.password),
         )
         if "result" not in data or "token" not in data["result"]:
             raise DSException("invalid api response")
@@ -67,6 +67,7 @@ class DSAppTokenHandler(DSRequestHandler):
         activate our app token using the authenticated temp token
         """
         await self.raw_request(
-            self.URL_ACTIVATE.format(apptoken=apptoken, temptoken=temptoken)
+            self.URL_ACTIVATE,
+            params=dict(applicationToken=apptoken, token=temptoken),
         )
         return True

@@ -26,6 +26,8 @@ class DSRequestHandler:
         :raises: DSCommandFailedException
         """
         url = f"https://{self.host}:{self.port}{url}"
+        # the query string can contain passwords and tokens, never log it
+        log_url = url.split("?", 1)[0]
 
         if retries == -1:  # -1 means retry indefinitely
             attempt = -1
@@ -41,13 +43,13 @@ class DSRequestHandler:
 
             if raised_exc:
                 _LOGGER.debug('caught "%s" url:%s , remaining tries %s, '
-                    'sleeping %.2fsecs', raised_exc, url,
+                    'sleeping %.2fsecs', raised_exc, log_url,
                     attempt, backoff_interval)
                 await asyncio.sleep(backoff_interval)
                 # bump interval for the next possible attempt
                 backoff_interval = backoff_interval * backoff
 
-            _LOGGER.debug("Raw Request to {url}, remaining attempts {attempt} of {retries}".format(url = url, attempt = attempt - 1, retries = retries))
+            _LOGGER.debug("Raw Request to {url}, remaining attempts {attempt} of {retries}".format(url = log_url, attempt = attempt - 1, retries = retries))
 
             # disable ssl verification for most servers miss valid certificates
             async with await self.get_aiohttp_session() as session:

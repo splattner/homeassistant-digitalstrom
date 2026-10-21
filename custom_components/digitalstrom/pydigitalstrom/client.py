@@ -143,7 +143,10 @@ class DSClient(DSRequestHandler):
                 _LOGGER.debug("adding {count} reachable scenes".format(count=len(result_rs["reachableScenes"])))
                 for reachable_scene in result_rs["reachableScenes"]:
                     scene_id = reachable_scene
-                    scene_name = ALL_SCENES_BYID[scene_id]
+                    scene_name = ALL_SCENES_BYID.get(scene_id)
+                    if scene_name is None:
+                        _LOGGER.debug("skipping unknown reachable scene {scene_id}".format(scene_id=scene_id))
+                        continue
 
                     id = "{zone_id}_{color}_{scene_id}".format(
                         zone_id=zone_id, color=color, scene_id=scene_id

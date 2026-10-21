@@ -120,14 +120,14 @@ class DigitalstromSwitch(RestoreEntity, SwitchEntity):
                 and self._scene_on.scene_id == scene_id
             ):
                 self._state = True
-                await self.async_update_ha_state()
+                self.async_write_ha_state()
             # turn off scene called
             elif (
                 self._scene_off.zone_id == zone_id
                 and self._scene_off.scene_id == scene_id
             ):
                 self._state = False
-                await self.async_update_ha_state()
+                self.async_write_ha_state()
 
         self._listener.register(callback=event_callback)
 
@@ -150,10 +150,12 @@ class DigitalstromSwitch(RestoreEntity, SwitchEntity):
     async def async_turn_on(self, **kwargs) -> None:
         await self._scene_on.turn_on()
         self._state = True
+        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:
         await self._scene_off.turn_on()
         self._state = False
+        self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -166,6 +168,7 @@ class DigitalstromSwitch(RestoreEntity, SwitchEntity):
         )
         self._state = state.state == STATE_ON
 
+    @property
     def should_poll(self) -> bool:
         return False
 

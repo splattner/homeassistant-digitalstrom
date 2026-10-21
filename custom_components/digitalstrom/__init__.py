@@ -18,7 +18,7 @@ from homeassistant.const import (
 )
 from homeassistant.exceptions import ConfigEntryNotReady, InvalidStateError
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.core import HomeAssistant
+from homeassistant.core import CoreState, HomeAssistant
 
 from .pydigitalstrom.client import DSClient
 from .pydigitalstrom.exceptions import DSException
@@ -102,19 +102,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
 
-    # start websocket listener and action delayer loops on hass startup
-    async def digitalstrom_start_loops(event):
+    # start websocket listener and action delayer loops
+    async def digitalstrom_start_loops(event=None):
         _LOGGER.info(f"loops started for digitalSTROM server at {client.host}")
-        hass.async_create_background_task(listener.start(), "websocket-start")
-        hass.async_create_background_task(client.stack.start(), "requesthandler-start")
+        hass.async_create_background_task(listener.start(), "digitalstrom-websocket-start")
+        hass.async_create_background_task(client.stack.start(), "digitalstrom-commandstack-start")
 
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, digitalstrom_start_loops)
+    # the start event only fires once, so if the entry is set up (or reloaded)
+    # while hass is already running we need to start the loops right away
+    if hass.state == CoreState.running:
+        await digitalstrom_start_loops()
+    else:
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, digitalstrom_start_loops)
 
     # start websocket listener and action delayer loops on hass shutdown
     async def digitalstrom_stop_loops(event):
         _LOGGER.info(f"loops stopped for digitalSTROM server at {client.host}")
-        hass.async_create_background_task(client.stack.stop(), "websocket-stop")
-        hass.async_create_background_task(listener.stop(), "requesthandler-stop")
+        hass.async_create_background_task(client.stack.stop(), "digitalstrom-commandstack-stop")
+        hass.async_create_background_task(listener.stop(), "digitalstrom-websocket-stop")
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, digitalstrom_stop_loops)
 
