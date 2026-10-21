@@ -89,6 +89,17 @@ async def test_user_flow_cannot_connect(hass, dss):
     assert result["errors"] == {"base": "cannot_connect"}
 
 
+async def test_user_flow_unexpected_server_answer(hass, dss):
+    dss.invalid_api_response = True
+    result = await start_user_flow(hass)
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input(dss)
+    )
+
+    assert result["errors"] == {"base": "cannot_connect"}
+
+
 async def test_user_flow_recovers_after_error(hass, dss):
     dss.ws_mode = "hold"
     dss.reject_login = True
