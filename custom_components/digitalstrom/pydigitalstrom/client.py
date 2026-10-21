@@ -22,6 +22,11 @@ class DSClient(DSRequestHandler):
     URL_REACHABLE_SCENES = "/json/zone/getReachableScenes?id={zoneId}&groupID={groupId}"
     URL_SCENE_GETNAME = "/json/zone/sceneGetName?id={zoneId}&groupID={groupId}&sceneNumber={scene}"
 
+    URL_LAST_CALLED_SCENE = "/json/zone/getLastCalledScene?id={zoneId}"
+    URL_LAST_CALLED_SCENE_GROUP = (
+        "/json/zone/getLastCalledScene?id={zoneId}&groupID={groupId}"
+    )
+
     URL_SESSIONTOKEN = "/json/system/loginApplication?loginToken={apptoken}"
 
     URL_METERS = "/json/property/getChildren?path=/apartment/dSMeters/"
@@ -43,6 +48,7 @@ class DSClient(DSRequestHandler):
         self._session_token = None
         self._scenes = dict()
         self._zones = dict()
+        self._last_called = dict()
         self._meters = dict()
 
         from .commandstack import DSCommandStack
@@ -190,6 +196,8 @@ class DSClient(DSRequestHandler):
                         color=color,
                     )
         
+        await self._load_last_called_scenes()
+
         from .devices.meter import DSMeter
         
         # get meters
@@ -210,6 +218,62 @@ class DSClient(DSRequestHandler):
 
             self._meters[dsuid] = dsmeter
 
+
+    async def get_last_called_scene(self, zone_id: int, group_id: int = None):
+        """
+        ask the server which scene was called last
+
+        :param group_id: group (color) of the scene, none for scenes that
+            don't belong to a group like present or sleeping
+        :return: scene number, None if the server doesn't know
+        """
+        if group_id is None:
+            url = self.URL_LAST_CALLED_SCENE.format(zoneId=zone_id)
+        else:
+            url = self.URL_LAST_CALLED_SCENE_GROUP.format(
+                zoneId=zone_id, groupId=group_id
+            )
+        response = await self.request(url=url)
+        if "result" not in response:
+            raise DSCommandFailedException("no result in server response")
+
+        scene = response["result"].get("scene")
+        return None if scene is None else int(scene)
+
+    async def _load_last_called_scenes(self):
+        """
+        remember the last called scene of all zones and light groups, they are
+        the state lights and switches start with
+        """
+        from .devices.scene import DSScene, DSColorScene
+
+        self._last_called = dict()
+        queries = set()
+        for scene in self._scenes.values():
+            if isinstance(scene, DSColorScene) and scene.color == GROUP_LIGHTS:
+                queries.add((scene.zone_id, scene.color))
+            elif isinstance(scene, DSScene):
+                queries.add((scene.zone_id, None))
+
+        for zone_id, group_id in sorted(queries, key=str):
+            try:
+                scene_id = await self.get_last_called_scene(zone_id, group_id)
+            except DSAuthenticationException:
+                raise
+            except DSException as err:
+                # the state is a nice to have, setup must not depend on it
+                _LOGGER.debug(
+                    "no last called scene for zone {zone_id} group {group_id}: {err}".format(
+                        zone_id=zone_id, group_id=group_id, err=err
+                    )
+                )
+                continue
+            if scene_id is not None:
+                self._last_called[(zone_id, group_id)] = scene_id
+
+    def get_last_called_scene_at_setup(self, zone_id: int, group_id: int = None):
+        """the scene that was called last when the client was initialized"""
+        return self._last_called.get((zone_id, group_id))
 
     def get_scenes(self):
         return self._scenes

@@ -47,7 +47,11 @@ async def async_setup_entry(
         # add sensors
         devices.append(
             DigitalstromSwitch(
-                hass=hass, scene_on=scene, scene_off=scene_off, listener=listener
+                hass=hass,
+                scene_on=scene,
+                scene_off=scene_off,
+                listener=listener,
+                last_scene_id=client.get_last_called_scene_at_setup(scene.zone_id),
             )
         )
 
@@ -61,6 +65,7 @@ class DigitalstromSwitch(RestoreEntity, SwitchEntity):
         scene_on: DSScene,
         scene_off: DSScene,
         listener: DSWebsocketEventListener,
+        last_scene_id: int = None,
         *args,
         **kwargs,
     ):
@@ -69,6 +74,7 @@ class DigitalstromSwitch(RestoreEntity, SwitchEntity):
         self._scene_off: DSScene = scene_off
         self._listener: DSWebsocketEventListener = listener
         self._state: bool = None
+        self._last_scene_id: int = last_scene_id
 
         # sleeping default is false
         if self._scene_on.scene_id == dsconst.SCENES["GROUP_INDIPENDENT"]["SCENE_SLEEPING"]:
@@ -78,7 +84,25 @@ class DigitalstromSwitch(RestoreEntity, SwitchEntity):
             self._state = True
         super().__init__(*args, **kwargs)
 
-    def _register_callback(self) -> None:
+    def _apply_scene(self, zone_id: int, scene_id: int) -> bool:
+        """
+        set state if a scene called on the server concerns this switch
+
+        :return: True if the scene concerns this switch
+        """
+        # turn on scene called
+        if self._scene_on.zone_id == zone_id and self._scene_on.scene_id == scene_id:
+            self._state = True
+            return True
+
+        # turn off scene called
+        if self._scene_off.zone_id == zone_id and self._scene_off.scene_id == scene_id:
+            self._state = False
+            return True
+
+        return False
+
+    def _register_callback(self):
         async def event_callback(event: dict):
             # sanity checks
             if "name" not in event:
@@ -96,19 +120,7 @@ class DigitalstromSwitch(RestoreEntity, SwitchEntity):
             zone_id: int = int(event["properties"]["zoneID"])
             scene_id: int = int(event["properties"]["sceneID"])
 
-            # turn on scene called
-            if (
-                self._scene_on.zone_id == zone_id
-                and self._scene_on.scene_id == scene_id
-            ):
-                self._state = True
-                self.async_write_ha_state()
-            # turn off scene called
-            elif (
-                self._scene_off.zone_id == zone_id
-                and self._scene_off.scene_id == scene_id
-            ):
-                self._state = False
+            if self._apply_scene(zone_id, scene_id):
                 self.async_write_ha_state()
 
         return self._listener.register(callback=event_callback)
@@ -142,14 +154,19 @@ class DigitalstromSwitch(RestoreEntity, SwitchEntity):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         self.async_on_remove(self._register_callback())
-        state: bool = await self.async_get_last_state()
-        if not state:
-            return
 
-        _LOGGER.debug(
-            f"trying to restore state of entity {self.entity_id} to {state.state}"
-        )
-        self._state = state.state == STATE_ON
+        state = await self.async_get_last_state()
+        if state:
+            _LOGGER.debug(
+                f"trying to restore state of entity {self.entity_id} to {state.state}"
+            )
+            self._state = state.state == STATE_ON
+
+        # sleeping and present share the last called scene of the zone, so it
+        # only tells something if it is one of ours. Otherwise the state we
+        # restored (or the default) is the best guess.
+        if self._last_scene_id is not None:
+            self._apply_scene(self._scene_on.zone_id, self._last_scene_id)
 
     @property
     def should_poll(self) -> bool:
