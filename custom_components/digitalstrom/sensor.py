@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 -*-
 import logging
-from typing import Union
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -42,8 +41,7 @@ async def async_setup_entry(
             )
         )
 
-    device: Union[DigitalstromConsumptionMeter,DigitalstromEnergyMeter]
-    async_add_entities(device for device in devices)
+    async_add_entities(devices)
 
 
 class DigitalstromConsumptionMeter(SensorEntity):

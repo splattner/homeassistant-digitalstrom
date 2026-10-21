@@ -4,12 +4,11 @@ import logging
 
 import aiohttp
 
-from .constants import GROUP_LIGHTS, SCENES, ALL_SCENES_BYNAME, ALL_SCENES_BYID
+from .constants import GROUP_LIGHTS, SCENES, ALL_SCENES_BYID
 from .exceptions import (
     DSAuthenticationException,
     DSException,
     DSCommandFailedException,
-    DSRequestException,
 )
 from .requesthandler import DSRequestHandler
 

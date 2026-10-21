@@ -51,8 +51,7 @@ async def async_setup_entry(
             )
         )
 
-    device: DigitalstromSwitch
-    async_add_entities(device for device in devices)
+    async_add_entities(devices)
 
 
 class DigitalstromSwitch(RestoreEntity, SwitchEntity):
