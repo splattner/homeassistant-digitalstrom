@@ -55,6 +55,15 @@ METER_SENSORS = (
 )
 
 
+def has_reading(
+    coordinator: DigitalstromMeterCoordinator,
+    dsuid: str,
+    description: DigitalstromMeterSensorDescription,
+) -> bool:
+    values = coordinator.data.get(dsuid)
+    return values is not None and description.value_fn(values) is not None
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: DigitalstromConfigEntry,
@@ -71,8 +80,21 @@ async def async_setup_entry(
 
     entities = []
     for dsuid, meter in meters.items():
-        _LOGGER.info(f"adding meter {meter.name}")
         for description in METER_SENSORS:
+            # A server can know meters that never deliver readings, e.g. virtual
+            # ones (vdc-bridge). Their sensors could only ever be unknown, so
+            # they are left out. If the first read failed we can't tell, then
+            # all are added and are unavailable until a read works.
+            if coordinator.last_update_success and not has_reading(
+                coordinator, dsuid, description
+            ):
+                _LOGGER.info(
+                    f"not adding {description.key} sensor of meter {meter.name}, "
+                    "the server delivers no reading for it"
+                )
+                continue
+
+            _LOGGER.info(f"adding {description.key} sensor of meter {meter.name}")
             entities.append(
                 DigitalstromMeterSensor(coordinator, dsuid, meter, description)
             )

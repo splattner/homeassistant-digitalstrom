@@ -75,17 +75,20 @@ async def test_dsid_case_does_not_matter(hass, dss, setup_entry):
     assert float(hass.states.get("sensor.meter_m1_consumption").state) == 42.0
 
 
-async def test_meters_without_readings_do_not_break_the_others(hass, dss, setup_entry):
-    """a dSS can know meters that deliver nothing; they are just unknown"""
+async def test_no_sensors_for_meters_without_readings(hass, dss, setup_entry):
+    """a dSS can know meters that deliver nothing, e.g. virtual ones"""
     dss.meters = ["m1", "m2", "m3"]
     dss.meters_without_metering = {"m2", "m3"}
 
-    await setup_entry()
+    entry = await setup_entry()
 
+    assert entry.state is ConfigEntryState.LOADED
+    assert sorted(hass.states.async_entity_ids("sensor")) == [
+        "sensor.meter_m1_consumption",
+        "sensor.meter_m1_energy",
+    ]
     assert float(hass.states.get("sensor.meter_m1_consumption").state) == 42.0
     assert float(hass.states.get("sensor.meter_m1_energy").state) == 1500.0
-    assert hass.states.get("sensor.meter_m2_consumption").state == "unknown"
-    assert hass.states.get("sensor.meter_m3_energy").state == "unknown"
 
 
 async def test_servers_that_answer_with_the_dsuid(hass, dss, setup_entry):
@@ -117,23 +120,55 @@ async def test_unmatched_readings_are_logged_once(hass, dss, setup_entry, caplog
     dss.metering_id_key = None
 
     await setup_entry()
-    await next_poll(hass)
-    await wait_for(lambda: len(dss.metering_requests) >= 4)
 
-    assert hass.states.get("sensor.meter_m1_consumption").state == "unknown"
+    assert hass.states.async_entity_ids("sensor") == []
     warnings = [r for r in caplog.records if "don't belong to any known meter" in r.getMessage()]
-    assert len(warnings) == 1
+    assert len(warnings) == 1  # asked twice, consumption and energy
     assert "'value': 42.0" in warnings[0].getMessage()  # what the server sent
 
 
-async def test_missing_readings_are_unknown(hass, dss, setup_entry):
+async def test_readings_that_disappear_become_unknown(hass, dss, setup_entry):
     dss.meters = ["m1"]
+    await setup_entry()
+    assert float(hass.states.get("sensor.meter_m1_consumption").state) == 42.0
+
     dss.metering_empty = True
+    await next_poll(hass)
+
+    await wait_for(lambda: hass.states.get("sensor.meter_m1_consumption").state == "unknown")
+    assert hass.states.get("sensor.meter_m1_energy").state == "unknown"
+
+
+async def test_only_readings_the_server_delivers_get_a_sensor(hass, dss, setup_entry):
+    dss.meters = ["m1"]
+    dss.meter_values = {"m1": {"consumption": 5.0, "energy": None}}
 
     await setup_entry()
 
-    assert hass.states.get("sensor.meter_m1_consumption").state == "unknown"
-    assert hass.states.get("sensor.meter_m1_energy").state == "unknown"
+    assert hass.states.async_entity_ids("sensor") == ["sensor.meter_m1_consumption"]
+
+
+async def test_no_sensors_if_no_meter_delivers_anything(hass, dss, setup_entry):
+    dss.meters = ["m1"]
+    dss.meters_without_metering = {"m1"}
+
+    entry = await setup_entry()
+
+    assert entry.state is ConfigEntryState.LOADED
+    assert hass.states.async_entity_ids("sensor") == []
+
+
+async def test_meter_that_starts_delivering_gets_sensors_after_reload(hass, dss, setup_entry):
+    dss.meters = ["m1", "m2"]
+    dss.meters_without_metering = {"m2"}
+    entry = await setup_entry()
+    assert hass.states.get("sensor.meter_m2_consumption") is None
+
+    dss.meters_without_metering = set()
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert float(hass.states.get("sensor.meter_m2_consumption").state) == 42.0
 
 
 async def test_sensors_are_unavailable_while_the_server_fails(hass, dss, setup_entry):
