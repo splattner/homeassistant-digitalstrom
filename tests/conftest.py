@@ -59,6 +59,9 @@ class FakeDSS:
         self.fail_metering = False  # reading the meters fails, the rest works
         self.metering_empty = False  # no readings available yet
         self.metering_uppercase_dsid = False
+        # key that tells which meter a reading is from: "dsid" (documented for
+        # getLatest), "dSUID" (newer servers) or None (not at all)
+        self.metering_id_key = "dsid"
         self.reject_login = False  # wrong username / password
         self.reject_app_token = False  # revoked app token
         self.fail_enable_token = False
@@ -176,13 +179,12 @@ class FakeDSS:
             dsuid = dsid.removeprefix("dsid-")
             default = {"consumption": 42.0, "energy": 1500.0}
             value = self.meter_values.get(dsuid, default)[reading]
-            values.append(
-                {
-                    "dsid": dsid.upper() if self.metering_uppercase_dsid else dsid,
-                    "value": value,
-                    "date": "2025-01-01 12:00:00",
-                }
-            )
+            entry = {"value": value, "date": "2025-01-01 12:00:00"}
+            if self.metering_id_key == "dsid":
+                entry["dsid"] = dsid.upper() if self.metering_uppercase_dsid else dsid
+            elif self.metering_id_key == "dSUID":
+                entry["dSUID"] = dsuid
+            values.append(entry)
         return self._ok({"values": values})
 
     async def _websocket(self, request):
