@@ -55,8 +55,8 @@ async def test_all_meters_are_read_with_two_requests(hass, dss, setup_entry):
     await setup_entry()
 
     assert dss.metering_requests == [
-        ("consumption", ["dsid-m1", "dsid-m2", "dsid-m3"]),
-        ("energy", ["dsid-m1", "dsid-m2", "dsid-m3"]),
+        ("consumption", ["all"]),
+        ("energy", ["all"]),
     ]
 
     dss.metering_requests.clear()
@@ -67,11 +67,25 @@ async def test_all_meters_are_read_with_two_requests(hass, dss, setup_entry):
 
 async def test_dsid_case_does_not_matter(hass, dss, setup_entry):
     dss.meters = ["m1"]
+    dss.metering_id_key = "dsid"
     dss.metering_uppercase_dsid = True
 
     await setup_entry()
 
     assert float(hass.states.get("sensor.meter_m1_consumption").state) == 42.0
+
+
+async def test_meters_without_readings_do_not_break_the_others(hass, dss, setup_entry):
+    """a dSS can know meters that deliver nothing; they are just unknown"""
+    dss.meters = ["m1", "m2", "m3"]
+    dss.meters_without_metering = {"m2", "m3"}
+
+    await setup_entry()
+
+    assert float(hass.states.get("sensor.meter_m1_consumption").state) == 42.0
+    assert float(hass.states.get("sensor.meter_m1_energy").state) == 1500.0
+    assert hass.states.get("sensor.meter_m2_consumption").state == "unknown"
+    assert hass.states.get("sensor.meter_m3_energy").state == "unknown"
 
 
 async def test_servers_that_answer_with_the_dsuid(hass, dss, setup_entry):

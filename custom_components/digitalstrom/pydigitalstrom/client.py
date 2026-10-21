@@ -30,7 +30,10 @@ class DSClient(DSRequestHandler):
     URL_SESSIONTOKEN = "/json/system/loginApplication?loginToken={apptoken}"
 
     URL_METERS = "/json/property/getChildren?path=/apartment/dSMeters/"
-    URL_METERING_LATEST = "/json/metering/getLatest?from=.meters({dsids})&type={type}"
+    # all meters, not just ours: naming them explicitly fails the whole request
+    # if the server doesn't know one or it can't meter (a server can have
+    # meters that don't deliver readings)
+    URL_METERING_LATEST = "/json/metering/getLatest?from=.meters(all)&type={type}"
 
     def __init__(
         self,
@@ -299,10 +302,7 @@ class DSClient(DSRequestHandler):
         :return: value by dSUID of the meter, meters without a value are missing
         """
         response = await self.request(
-            url=self.URL_METERING_LATEST.format(
-                dsids=",".join(meter.unique_id for meter in meters),
-                type=metering_type,
-            )
+            url=self.URL_METERING_LATEST.format(type=metering_type)
         )
         if "result" not in response:
             raise DSCommandFailedException("no result in server response")

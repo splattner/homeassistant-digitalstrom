@@ -52,6 +52,9 @@ class FakeDSS:
         self.app_token = "apptoken"
         self.reachable_scenes = [0, 5]
         self.meters = []  # dSUIDs
+        # meters the server knows, but that deliver no readings; asking for one
+        # of them by name fails, .meters(all) just leaves them out
+        self.meters_without_metering = set()
         # (zone id, group id or None) -> number of the scene called last
         self.last_called = {}
         self.fail_last_called = False
@@ -59,9 +62,9 @@ class FakeDSS:
         self.fail_metering = False  # reading the meters fails, the rest works
         self.metering_empty = False  # no readings available yet
         self.metering_uppercase_dsid = False
-        # key that tells which meter a reading is from: "dsid" (documented for
-        # getLatest), "dSUID" (newer servers) or None (not at all)
-        self.metering_id_key = "dsid"
+        # keys that tell which meter a reading is from: "both" (what a real dSS
+        # sends), "dsid" (documented for getLatest), "dSUID" or None (not at all)
+        self.metering_id_key = "both"
         self.reject_login = False  # wrong username / password
         self.reject_app_token = False  # revoked app token
         self.fail_enable_token = False
@@ -167,22 +170,32 @@ class FakeDSS:
         return self._ok({"scene": self.last_called[key]})
 
     async def _metering(self, request):
-        """getLatest for the dSIDs in .meters(a,b,...), dSID is dsid-<dSUID>"""
+        """getLatest for .meters(all) or .meters(a,b,...), dSID is dsid-<dSUID>"""
         if self.fail_metering:
             return web.Response(status=500, text="server error")
         reading = request.query["type"]
-        dsids = request.query["from"].removeprefix(".meters(").removesuffix(")").split(",")
-        self.metering_requests.append((reading, dsids))
+        selection = request.query["from"].removeprefix(".meters(").removesuffix(")")
+        self.metering_requests.append((reading, selection.split(",")))
+
+        if selection == "all":
+            dsuids = [m for m in self.meters if m not in self.meters_without_metering]
+        else:
+            dsuids = [d.removeprefix("dsid-") for d in selection.split(",")]
+            for dsuid in dsuids:
+                if dsuid not in self.meters or dsuid in self.meters_without_metering:
+                    return self._failed(f"unknown meter {dsuid}")
 
         values = []
-        for dsid in [] if self.metering_empty else dsids:
-            dsuid = dsid.removeprefix("dsid-")
+        for dsuid in [] if self.metering_empty else dsuids:
             default = {"consumption": 42.0, "energy": 1500.0}
-            value = self.meter_values.get(dsuid, default)[reading]
-            entry = {"value": value, "date": "2025-01-01 12:00:00"}
-            if self.metering_id_key == "dsid":
+            entry = {
+                "value": self.meter_values.get(dsuid, default)[reading],
+                "date": "2025-01-01 12:00:00",
+            }
+            dsid = f"dsid-{dsuid}"
+            if self.metering_id_key in ("both", "dsid"):
                 entry["dsid"] = dsid.upper() if self.metering_uppercase_dsid else dsid
-            elif self.metering_id_key == "dSUID":
+            if self.metering_id_key in ("both", "dSUID"):
                 entry["dSUID"] = dsuid
             values.append(entry)
         return self._ok({"values": values})
