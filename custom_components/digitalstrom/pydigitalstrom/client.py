@@ -49,6 +49,7 @@ class DSClient(DSRequestHandler):
         self._scenes = dict()
         self._zones = dict()
         self._last_called = dict()
+        self._warned_metering_ids = False
         self._meters = dict()
 
         from .commandstack import DSCommandStack
@@ -285,24 +286,61 @@ class DSClient(DSRequestHandler):
     def get_meters(self):
         return self._meters
 
-    async def get_latest_metering(self, dsids: list, metering_type: str) -> dict:
+    # keys that can hold the id of a meter in a metering result, depending on
+    # the age of the server dSID is deprecated in favor of dSUID
+    METERING_ID_KEYS = ("dSUID", "dsuid", "dsid", "dSID")
+
+    async def get_latest_metering(self, meters: list, metering_type: str) -> dict:
         """
         latest values of several meters with a single request
 
-        :param dsids: dSIDs of the meters
+        :param meters: the meters to read
         :param metering_type: "consumption" (W) or "energy" (Wh)
-        :return: value by lower case dSID, meters without a value are missing
+        :return: value by dSUID of the meter, meters without a value are missing
         """
         response = await self.request(
             url=self.URL_METERING_LATEST.format(
-                dsids=",".join(dsids), type=metering_type
+                dsids=",".join(meter.unique_id for meter in meters),
+                type=metering_type,
             )
         )
         if "result" not in response:
             raise DSCommandFailedException("no result in server response")
 
-        return {
-            str(entry["dsid"]).lower(): entry["value"]
-            for entry in response["result"].get("values", [])
-            if "dsid" in entry and entry.get("value") is not None
-        }
+        entries = [
+            entry
+            for entry in response["result"].get("values") or []
+            if entry.get("value") is not None
+        ]
+
+        # a meter is known by its dSID and its dSUID, servers use either
+        dsuid_by_id = {}
+        for meter in meters:
+            dsuid_by_id[str(meter.unique_id).lower()] = meter.dsuid
+            dsuid_by_id[str(meter.dsuid).lower()] = meter.dsuid
+
+        values = {}
+        for entry in entries:
+            for key in self.METERING_ID_KEYS:
+                dsuid = dsuid_by_id.get(str(entry.get(key)).lower())
+                if dsuid:
+                    values[dsuid] = entry["value"]
+                    break
+
+        # an answer that doesn't say who it is from can only be from the one
+        # meter we asked for
+        if not values and len(meters) == 1 and len(entries) == 1:
+            values[meters[0].dsuid] = entries[0]["value"]
+
+        if entries and not values and not self._warned_metering_ids:
+            self._warned_metering_ids = True
+            _LOGGER.warning(
+                "Metering values for {type} don't belong to any known meter "
+                "(asked for {asked}), got: {got}".format(
+                    type=metering_type,
+                    asked=[(m.dsuid, m.unique_id) for m in meters],
+                    got=str(entries)[:500],
+                )
+            )
+
+        return values

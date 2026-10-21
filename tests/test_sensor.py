@@ -74,6 +74,44 @@ async def test_dsid_case_does_not_matter(hass, dss, setup_entry):
     assert float(hass.states.get("sensor.meter_m1_consumption").state) == 42.0
 
 
+async def test_servers_that_answer_with_the_dsuid(hass, dss, setup_entry):
+    """newer servers deprecate the dSID in favor of the dSUID"""
+    dss.meters = ["m1", "m2"]
+    dss.meter_values = {"m2": {"consumption": 7.5, "energy": 99.0}}
+    dss.metering_id_key = "dSUID"
+
+    await setup_entry()
+
+    assert float(hass.states.get("sensor.meter_m1_consumption").state) == 42.0
+    assert float(hass.states.get("sensor.meter_m2_consumption").state) == 7.5
+    assert float(hass.states.get("sensor.meter_m2_energy").state) == 99.0
+
+
+async def test_single_meter_answer_without_an_id(hass, dss, setup_entry):
+    dss.meters = ["m1"]
+    dss.metering_id_key = None
+
+    await setup_entry()
+
+    assert float(hass.states.get("sensor.meter_m1_consumption").state) == 42.0
+    assert float(hass.states.get("sensor.meter_m1_energy").state) == 1500.0
+
+
+async def test_unmatched_readings_are_logged_once(hass, dss, setup_entry, caplog):
+    """several meters and no way to tell whose value is whose"""
+    dss.meters = ["m1", "m2"]
+    dss.metering_id_key = None
+
+    await setup_entry()
+    await next_poll(hass)
+    await wait_for(lambda: len(dss.metering_requests) >= 4)
+
+    assert hass.states.get("sensor.meter_m1_consumption").state == "unknown"
+    warnings = [r for r in caplog.records if "don't belong to any known meter" in r.getMessage()]
+    assert len(warnings) == 1
+    assert "'value': 42.0" in warnings[0].getMessage()  # what the server sent
+
+
 async def test_missing_readings_are_unknown(hass, dss, setup_entry):
     dss.meters = ["m1"]
     dss.metering_empty = True
