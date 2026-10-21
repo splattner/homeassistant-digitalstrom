@@ -52,6 +52,10 @@ For now, you have to [add the repository yourself](https://hacs.netlify.com/usag
 Yes. Based on the nature of how digitalSTROM servers communicate with single devices, a digitalSTROM installation can easily be overwhelmed with too many commands. It is therefore recommended to not issue more than 2-3 commands per second. This integration takes care of that by handling one command after the other. The default delay is 500ms. It can be changed when setting up the integration and later in the integration's options (Configure). The power meters are read with two requests per interval, no matter how many meters there are; the interval is an option as well.
 
 
+## Diagnostics
+
+If something doesn't work, download the diagnostics of the integration (Settings -> Devices & services -> digitalSTROM -> three dots -> Download diagnostics) and attach them to your issue. They show whether the websocket is connected, how many commands are waiting, which zones, scenes and meters were found and what the meters report. Host, app token, password and the ids of meters are removed.
+
 ## Development
 
 The tests use [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component), so they run the integration in a real Home Assistant core against a fake digitalSTROM server (TLS, websocket). That needs a recent Python (3.13 at the time of writing) and `openssl` to create a throw-away certificate.

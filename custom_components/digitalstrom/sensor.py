@@ -74,6 +74,7 @@ async def async_setup_entry(
         return
 
     coordinator = DigitalstromMeterCoordinator(hass, entry, entry.runtime_data.client)
+    entry.runtime_data.meter_coordinator = coordinator
     # a failing first read must not block the other platforms, the sensors are
     # unavailable until a read works
     await coordinator.async_refresh()

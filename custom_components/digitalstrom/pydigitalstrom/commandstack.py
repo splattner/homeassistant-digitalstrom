@@ -13,6 +13,20 @@ class DSCommandStack:
         self._task = None
         self._delay = delay
 
+    @property
+    def delay(self) -> int:
+        """milliseconds between two commands"""
+        return self._delay
+
+    @property
+    def pending(self) -> int:
+        """number of commands waiting to be sent"""
+        return len(self._stack)
+
+    @property
+    def running(self) -> bool:
+        return self._task is not None and not self._task.done()
+
     async def append(self, url: str):
         self._stack.append(url)
 

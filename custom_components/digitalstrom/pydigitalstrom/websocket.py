@@ -22,6 +22,24 @@ class DSWebsocketEventListener:
         self._running = False
         self._last_keepalive = None
 
+    @property
+    def running(self) -> bool:
+        """True between start() and stop(), also while reconnecting"""
+        return self._running
+
+    @property
+    def connected(self) -> bool:
+        return self._ws is not None
+
+    @property
+    def last_keepalive(self):
+        """time of the last keepalive event in milliseconds, None if there was none"""
+        return self._last_keepalive
+
+    @property
+    def callback_count(self) -> int:
+        return len(self._callbacks)
+
     def register(self, callback: callable) -> callable:
         """
         register an async event callback
