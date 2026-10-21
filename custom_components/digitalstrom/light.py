@@ -46,6 +46,14 @@ PRESET_EFFECT_SCENES = {
     ),
 }
 
+# scene ids that turn a light on, with the effect they stand for
+PRESET_EFFECT_NAMES = {
+    dsconst.SCENES["PRESET"]["SCENE_PRESET1"]: "PRESET1",
+    dsconst.SCENES["PRESET"]["SCENE_PRESET2"]: "PRESET2",
+    dsconst.SCENES["PRESET"]["SCENE_PRESET3"]: "PRESET3",
+    dsconst.SCENES["PRESET"]["SCENE_PRESET4"]: "PRESET4",
+}
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: DigitalstromConfigEntry, async_add_entities: AddEntitiesCallback
@@ -96,7 +104,14 @@ async def async_setup_entry(
         )
         devices.append(
             DigitalstromLight(
-                hass=hass, scene_on=scene_on, scene_off=scene, listener=listener, effects=effects
+                hass=hass,
+                scene_on=scene_on,
+                scene_off=scene,
+                listener=listener,
+                effects=effects,
+                last_scene_id=client.get_last_called_scene_at_setup(
+                    scene.zone_id, scene.color
+                ),
             )
         )
 
@@ -111,6 +126,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
         scene_off: Union[DSScene, DSColorScene],
         listener: DSWebsocketEventListener,
         effects,
+        last_scene_id: int = None,
         *args,
         **kwargs,
     ):
@@ -120,6 +136,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
         self._listener: DSWebsocketEventListener = listener
         self._state: bool = None
         self._effect = None
+        self._last_scene_id: int = last_scene_id
 
         # effect name -> scene to call, PRESET1 is the regular turn on scene
         self._effect_scenes: dict = {"PRESET1": scene_on}
@@ -158,6 +175,41 @@ class DigitalstromLight(RestoreEntity, LightEntity):
         """Return the list of supported effects for this light."""
         return list(self._effect_scenes)
 
+    def _apply_scene(self, zone_id: int, group_id: int, scene_id: int) -> bool:
+        """
+        set state and effect if a scene called on the server concerns this light
+
+        :return: True if the scene concerns this light
+        """
+        # device turned on or broadcast turned on (handle PRESET1..PRESET4)
+        if (
+            self._scene_on.zone_id == zone_id
+            and self._scene_on.color == group_id
+            and (
+                self._scene_on.scene_id == scene_id or scene_id in PRESET_EFFECT_NAMES
+            )
+        ):
+            self._state = True
+            # set effect according to which preset was called (default to PRESET1)
+            effect = PRESET_EFFECT_NAMES.get(scene_id, "PRESET1")
+            self._effect = effect if effect in self._effect_scenes else "PRESET1"
+            return True
+
+        # device turned off or broadcast turned off
+        if (
+            self._scene_off.zone_id == zone_id
+            and self._scene_off.color == group_id
+            and (
+                self._scene_off.scene_id == scene_id
+                or dsconst.SCENES["PRESET"]["SCENE_PRESET0"] == scene_id
+            )
+        ):
+            self._state = False
+            self._effect = None
+            return True
+
+        return False
+
     def _register_callback(self):
         async def event_callback(event: dict) -> None:
             # sanity checks
@@ -179,33 +231,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
             group_id: int = int(event["properties"]["groupID"])
             scene_id: int = int(event["properties"]["sceneID"])
 
-            # Map preset scene ids to effect names
-            preset_map = {
-                dsconst.SCENES["PRESET"]["SCENE_PRESET1"]: "PRESET1",
-                dsconst.SCENES["PRESET"]["SCENE_PRESET2"]: "PRESET2",
-                dsconst.SCENES["PRESET"]["SCENE_PRESET3"]: "PRESET3",
-                dsconst.SCENES["PRESET"]["SCENE_PRESET4"]: "PRESET4",
-            }
-
-            # device turned on or broadcast turned on (handle PRESET1..PRESET4)
-            if (
-                self._scene_on.zone_id == zone_id
-                and self._scene_on.color == group_id
-                and (self._scene_on.scene_id == scene_id or scene_id in preset_map)
-            ):
-                self._state = True
-                # set effect according to which preset was called (default to PRESET1)
-                effect = preset_map.get(scene_id, "PRESET1")
-                self._effect = effect if effect in self._effect_scenes else "PRESET1"
-                self.async_write_ha_state()
-            # device turned off or broadcast turned off
-            elif (
-                self._scene_off.zone_id == zone_id
-                and self._scene_off.color == group_id
-                and (self._scene_off.scene_id == scene_id or dsconst.SCENES["PRESET"]["SCENE_PRESET0"] == scene_id)
-            ):
-                self._state = False
-                self._effect = None
+            if self._apply_scene(zone_id, group_id, scene_id):
                 self.async_write_ha_state()
 
         _LOGGER.debug(f"Register callback for {self._scene_off.name}")
@@ -253,14 +279,20 @@ class DigitalstromLight(RestoreEntity, LightEntity):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         self.async_on_remove(self._register_callback())
-        state: bool = await self.async_get_last_state()
-        if not state:
-            return
 
-        _LOGGER.debug(
-            f"trying to restore state of entity {self.entity_id} to {state.state}"
-        )
-        self._state = state.state == STATE_ON
+        state = await self.async_get_last_state()
+        if state:
+            _LOGGER.debug(
+                f"trying to restore state of entity {self.entity_id} to {state.state}"
+            )
+            self._state = state.state == STATE_ON
+
+        # what the server says is more up to date than what we remember, but
+        # it only helps if the last scene called there concerns this light
+        if self._last_scene_id is not None:
+            self._apply_scene(
+                self._scene_on.zone_id, self._scene_on.color, self._last_scene_id
+            )
 
     @property
     def should_poll(self) -> bool:

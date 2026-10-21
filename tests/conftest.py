@@ -52,6 +52,9 @@ class FakeDSS:
         self.app_token = "apptoken"
         self.reachable_scenes = [0, 5]
         self.meters = []  # dSUIDs
+        # (zone id, group id or None) -> number of the scene called last
+        self.last_called = {}
+        self.fail_last_called = False
         self.reject_login = False  # wrong username / password
         self.reject_app_token = False  # revoked app token
         self.fail_enable_token = False
@@ -66,6 +69,7 @@ class FakeDSS:
         # recordings
         self.login_params = None
         self.scene_calls = []
+        self.last_called_requests = []  # (zone id, group id or None)
         self.ws_connections = 0
         self.ws_cookies = []
         self._sockets = []
@@ -143,6 +147,16 @@ class FakeDSS:
         # /apartment/dSMeters/<dsuid>/<name|dSID>
         _, _, _, dsuid, prop = request.query["path"].split("/")
         return self._ok({"value": f"Meter {dsuid}" if prop == "name" else f"dsid-{dsuid}"})
+
+    async def _last_called_scene(self, request):
+        if self.fail_last_called:
+            return web.Response(status=500, text="server error")
+        group = request.query.get("groupID")
+        key = (int(request.query["id"]), None if group is None else int(group))
+        self.last_called_requests.append(key)
+        if key not in self.last_called:
+            return self._failed("no scene called yet")
+        return self._ok({"scene": self.last_called[key]})
 
     async def _metering(self, request):
         value = 1500.0 if request.query["type"] == "energy" else 42.0
@@ -229,6 +243,7 @@ class FakeDSS:
         get("/json/property/getString", self._meter_property)
         get("/json/metering/getLatest", self._metering)
         get("/json/zone/callScene", self._call_scene)
+        get("/json/zone/getLastCalledScene", self._last_called_scene)
         get("/json/test/error", self._error)
         get("/json/test/bad_json", self._bad_json)
         get("/json/test/slow", self._slow)
