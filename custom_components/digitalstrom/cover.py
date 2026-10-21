@@ -88,7 +88,7 @@ class DigitalstromCover(CoverEntity):
     @property
     def supported_features(self) -> int:
         """Flag supported features."""
-        return CoverEntityFeature.SUPPORT_OPEN | CoverEntityFeature.SUPPORT_CLOSE
+        return CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE
 
     @property
     def name(self) -> str:
@@ -114,6 +114,7 @@ class DigitalstromCover(CoverEntity):
         _LOGGER.info(f"calling cover scene {self._scene_off.scene_id}")
         await self._scene_off.turn_on()
 
+    @property
     def should_poll(self) -> bool:
         return False
 

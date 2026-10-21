@@ -8,6 +8,9 @@ from .exceptions import DSCommandFailedException, DSRequestException
 
 _LOGGER = logging.getLogger(__name__)
 
+# a dSS that doesn't answer must not block callers (and the command stack) forever
+REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30)
+
 
 class DSRequestHandler:
     def __init__(self, host: str, port: str, loop: asyncio.AbstractEventLoop = None):
@@ -26,6 +29,8 @@ class DSRequestHandler:
         :raises: DSCommandFailedException
         """
         url = f"https://{self.host}:{self.port}{url}"
+        # the query string can contain passwords and tokens, never log it
+        log_url = url.split("?", 1)[0]
 
         if retries == -1:  # -1 means retry indefinitely
             attempt = -1
@@ -34,6 +39,8 @@ class DSRequestHandler:
         else:  # any other value means retry N times
             attempt = retries + 1
 
+        kwargs.setdefault("timeout", REQUEST_TIMEOUT)
+
         backoff_interval = interval
         raised_exc = None
 
@@ -41,13 +48,13 @@ class DSRequestHandler:
 
             if raised_exc:
                 _LOGGER.debug('caught "%s" url:%s , remaining tries %s, '
-                    'sleeping %.2fsecs', raised_exc, url,
+                    'sleeping %.2fsecs', raised_exc, log_url,
                     attempt, backoff_interval)
                 await asyncio.sleep(backoff_interval)
                 # bump interval for the next possible attempt
                 backoff_interval = backoff_interval * backoff
 
-            _LOGGER.debug("Raw Request to {url}, remaining attempts {attempt} of {retries}".format(url = url, attempt = attempt - 1, retries = retries))
+            _LOGGER.debug("Raw Request to {url}, remaining attempts {attempt} of {retries}".format(url = log_url, attempt = attempt - 1, retries = retries))
 
             # disable ssl verification for most servers miss valid certificates
             async with await self.get_aiohttp_session() as session:
@@ -55,7 +62,7 @@ class DSRequestHandler:
                     async with session.get(url=url, **kwargs) as response:
                         # check for server errors
                         if not response.status == 200:
-                            raise DSRequestException(response.text)
+                            raise DSRequestException(await response.text())
 
                         try:
                             data = await response.json()
@@ -64,8 +71,8 @@ class DSRequestHandler:
                         if "ok" not in data or not data["ok"]:
                             raise DSCommandFailedException()
                         return data
-                except aiohttp.ClientError:
-                    # Only retry on this Error
+                except (aiohttp.ClientError, asyncio.TimeoutError):
+                    # Only retry on these Errors
                     raised_exc = DSRequestException("request failed")
 
             attempt -= 1

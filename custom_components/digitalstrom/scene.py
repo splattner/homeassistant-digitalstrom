@@ -129,6 +129,7 @@ class DigitalstromScene(Scene):
         _LOGGER.info(f"calling scene {self._scene.scene_id}")
         await self._scene.turn_on()
 
+    @property
     def should_poll(self) -> bool:
         return False
 

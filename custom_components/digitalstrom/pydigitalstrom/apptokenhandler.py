@@ -1,5 +1,3 @@
-from typing import Optional
-
 import aiohttp
 import asyncio
 
@@ -11,10 +9,8 @@ class DSAppTokenHandler(DSRequestHandler):
     URL_APPTOKEN = (
         "/json/system/requestApplicationToken?applicationName=" "homeassistant"
     )
-    URL_TEMPTOKEN = "/json/system/login?user={username}&password={password}"
-    URL_ACTIVATE = (
-        "/json/system/enableToken?applicationToken={apptoken}" "&token={temptoken}"
-    )
+    URL_TEMPTOKEN = "/json/system/login"
+    URL_ACTIVATE = "/json/system/enableToken"
 
     def __init__(
         self,
@@ -29,18 +25,17 @@ class DSAppTokenHandler(DSRequestHandler):
 
         super().__init__(host=host, port=port, loop=loop)
 
-    async def request_apptoken(self) -> Optional[str]:
+    async def request_apptoken(self) -> str:
         """
         request a new app token from the server
+
+        :raises: DSException if the token could not be requested or activated
         """
         # get fresh app token and activate it
         apptoken = await self.get_application_token_from_server()
         temptoken = await self.get_temp_token()
-        if await self.activate_application_token(
-            apptoken=apptoken, temptoken=temptoken
-        ):
-            return apptoken
-        return None
+        await self.activate_application_token(apptoken=apptoken, temptoken=temptoken)
+        return apptoken
 
     async def get_application_token_from_server(self) -> str:
         """
@@ -55,18 +50,22 @@ class DSAppTokenHandler(DSRequestHandler):
         """
         get an authenticated temp token
         """
+        # pass credentials as params so they get url-encoded
         data = await self.raw_request(
-            self.URL_TEMPTOKEN.format(username=self.username, password=self.password)
+            self.URL_TEMPTOKEN,
+            params=dict(user=self.username, password=self.password),
         )
         if "result" not in data or "token" not in data["result"]:
             raise DSException("invalid api response")
         return data["result"]["token"]
 
-    async def activate_application_token(self, apptoken, temptoken) -> bool:
+    async def activate_application_token(self, apptoken, temptoken) -> None:
         """
         activate our app token using the authenticated temp token
+
+        :raises: DSCommandFailedException if the server rejects the activation
         """
         await self.raw_request(
-            self.URL_ACTIVATE.format(apptoken=apptoken, temptoken=temptoken)
+            self.URL_ACTIVATE,
+            params=dict(applicationToken=apptoken, token=temptoken),
         )
-        return True

@@ -23,6 +23,30 @@ from .util import slugify_entry
 
 _LOGGER = logging.getLogger(__name__)
 
+# turn off scene id -> scene ids of the Preset X2-X4 effects of that light
+PRESET_EFFECT_SCENES = {
+    dsconst.SCENES["PRESET"]["SCENE_PRESET0"]: (
+        dsconst.SCENES["PRESET"]["SCENE_PRESET2"],
+        dsconst.SCENES["PRESET"]["SCENE_PRESET3"],
+        dsconst.SCENES["PRESET"]["SCENE_PRESET4"],
+    ),
+    dsconst.SCENES["PRESET"]["SCENE_PRESET10"]: (
+        dsconst.SCENES["PRESET"]["SCENE_PRESET12"],
+        dsconst.SCENES["PRESET"]["SCENE_PRESET13"],
+        dsconst.SCENES["PRESET"]["SCENE_PRESET14"],
+    ),
+    dsconst.SCENES["PRESET"]["SCENE_PRESET20"]: (
+        dsconst.SCENES["PRESET"]["SCENE_PRESET22"],
+        dsconst.SCENES["PRESET"]["SCENE_PRESET23"],
+        dsconst.SCENES["PRESET"]["SCENE_PRESET24"],
+    ),
+    dsconst.SCENES["PRESET"]["SCENE_PRESET30"]: (
+        dsconst.SCENES["PRESET"]["SCENE_PRESET32"],
+        dsconst.SCENES["PRESET"]["SCENE_PRESET33"],
+        dsconst.SCENES["PRESET"]["SCENE_PRESET34"],
+    ),
+}
+
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -66,36 +90,25 @@ async def async_setup_entry(
             f"{scene.zone_id}_{scene.color}_{scene.scene_id + 5}", None,
         )
 
+        # get Preset X2-X4, only those that exist on the server
         effects = dict()
-
-        # get Preset X2-x4
-        if scene.scene_id == dsconst.SCENES["PRESET"]["SCENE_PRESET0"]:
-            effects["preset2"] = scenes.get(f"{scene.zone_id}_{scene.color}_{dsconst.SCENES['PRESET']['SCENE_PRESET2']}", None,)
-            effects["preset3"] = scenes.get(f"{scene.zone_id}_{scene.color}_{dsconst.SCENES['PRESET']['SCENE_PRESET3']}", None,)
-            effects["preset4"] = scenes.get(f"{scene.zone_id}_{scene.color}_{dsconst.SCENES['PRESET']['SCENE_PRESET4']}", None,)
-        
-        if scene.scene_id == dsconst.SCENES["PRESET"]["SCENE_PRESET10"]:
-            effects["preset2"] = scenes.get(f"{scene.zone_id}_{scene.color}_{dsconst.SCENES['PRESET']['SCENE_PRESET12']}", None,)
-            effects["preset3"] = scenes.get(f"{scene.zone_id}_{scene.color}_{dsconst.SCENES['PRESET']['SCENE_PRESET13']}", None,)
-            effects["preset4"] = scenes.get(f"{scene.zone_id}_{scene.color}_{dsconst.SCENES['PRESET']['SCENE_PRESET14']}", None,)
-        
-        if scene.scene_id == dsconst.SCENES["PRESET"]["SCENE_PRESET20"]:
-            effects["preset2"] = scenes.get(f"{scene.zone_id}_{scene.color}_{dsconst.SCENES['PRESET']['SCENE_PRESET22']}", None,)
-            effects["preset3"] = scenes.get(f"{scene.zone_id}_{scene.color}_{dsconst.SCENES['PRESET']['SCENE_PRESET23']}", None,)
-            effects["preset4"] = scenes.get(f"{scene.zone_id}_{scene.color}_{dsconst.SCENES['PRESET']['SCENE_PRESET24']}", None,)
-
-        if scene.scene_id == dsconst.SCENES["PRESET"]["SCENE_PRESET30"]:
-            effects["preset2"] = scenes.get(f"{scene.zone_id}_{scene.color}_{dsconst.SCENES['PRESET']['SCENE_PRESET32']}", None,)
-            effects["preset3"] = scenes.get(f"{scene.zone_id}_{scene.color}_{dsconst.SCENES['PRESET']['SCENE_PRESET33']}", None,)
-            effects["preset4"] = scenes.get(f"{scene.zone_id}_{scene.color}_{dsconst.SCENES['PRESET']['SCENE_PRESET34']}", None,)
-
+        for effect_key, preset_id in zip(
+            ("preset2", "preset3", "preset4"),
+            PRESET_EFFECT_SCENES.get(scene.scene_id, ()),
+        ):
+            effect_scene = scenes.get(f"{scene.zone_id}_{scene.color}_{preset_id}")
+            if effect_scene:
+                effects[effect_key] = effect_scene
 
         # no turn on scene found, skip
         if not scene_on:
             continue
 
         # add light
-        _LOGGER.info(f"adding light {scene.scene_id}: Off: {scene.name}, On: {scene_on.name}, Preset2: {effects['preset2'].name}, Preset3: {effects['preset3'].name}, Preset4: {effects['preset4'].name}")
+        _LOGGER.info(
+            f"adding light {scene.scene_id}: Off: {scene.name}, On: {scene_on.name}, "
+            f"Effects: {[e.name for e in effects.values()]}"
+        )
         devices.append(
             DigitalstromLight(
                 hass=hass, scene_on=scene_on, scene_off=scene, listener=listener, effects=effects
@@ -122,8 +135,12 @@ class DigitalstromLight(RestoreEntity, LightEntity):
         self._scene_off: Union[DSScene, DSColorScene] = scene_off
         self._listener: DSWebsocketEventListener = listener
         self._state: bool = None
-        self._scene_effects = effects
-        self._effect = ""
+        self._effect = None
+
+        # effect name -> scene to call, PRESET1 is the regular turn on scene
+        self._effect_scenes: dict = {"PRESET1": scene_on}
+        for key, effect_scene in effects.items():
+            self._effect_scenes[key.upper()] = effect_scene
 
         super().__init__(*args, **kwargs)
 
@@ -157,7 +174,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
     @property
     def effect_list(self):
         """Return the list of supported effects for this light."""
-        return ["PRESET1","PRESET2", "PRESET3", "PRESET4"]
+        return list(self._effect_scenes)
 
     def register_callback(self):
         async def event_callback(event: dict) -> None:
@@ -196,7 +213,8 @@ class DigitalstromLight(RestoreEntity, LightEntity):
             ):
                 self._state = True
                 # set effect according to which preset was called (default to PRESET1)
-                self._effect = preset_map.get(scene_id, "PRESET1")
+                effect = preset_map.get(scene_id, "PRESET1")
+                self._effect = effect if effect in self._effect_scenes else "PRESET1"
                 self.async_write_ha_state()
             # device turned off or broadcast turned off
             elif (
@@ -205,7 +223,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
                 and (self._scene_off.scene_id == scene_id or dsconst.SCENES["PRESET"]["SCENE_PRESET0"] == scene_id)
             ):
                 self._state = False
-                self._effect = ""
+                self._effect = None
                 self.async_write_ha_state()
 
         _LOGGER.debug(f"Register callback for {self._scene_off.name}")
@@ -231,33 +249,24 @@ class DigitalstromLight(RestoreEntity, LightEntity):
         return self._state
 
     async def async_turn_on(self, **kwargs) -> None:
+        effect = kwargs.get(ATTR_EFFECT, "PRESET1")
+        scene = self._effect_scenes.get(effect)
+        if scene is None:
+            _LOGGER.warning(f"unknown effect {effect} for {self.name}, using PRESET1")
+            effect = "PRESET1"
+            scene = self._scene_on
 
-        if ATTR_EFFECT in kwargs:
-            _LOGGER.debug(
-                f"call turn on with Effect {kwargs[ATTR_EFFECT]}"
-            )
-            if kwargs[ATTR_EFFECT] == "PRESET1":
-                await self._scene_on.turn_on()
-                self._effect = "PRESET1"
-            if kwargs[ATTR_EFFECT] == "PRESET2":
-                await self._scene_effects["preset2"].turn_on()
-                self._effect = "PRESET2"
-            if kwargs[ATTR_EFFECT] == "PRESET3":
-                await self._scene_effects["preset3"].turn_on()
-                self._effect = "PRESET3"
-            if kwargs[ATTR_EFFECT] == "PRESET4":
-                await self._scene_effects["preset4"].turn_on()
-                self._effect = "PRESET4"
-                
-        else:
-            await self._scene_on.turn_on()
-            self._effect = "PRESET1"
+        _LOGGER.debug(f"call turn on with Effect {effect}")
+        await scene.turn_on()
+        self._effect = effect
         self._state = True
+        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:
         await self._scene_off.turn_on()
-        self._effect = ""
+        self._effect = None
         self._state = False
+        self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -270,6 +279,7 @@ class DigitalstromLight(RestoreEntity, LightEntity):
         )
         self._state = state.state == STATE_ON
 
+    @property
     def should_poll(self) -> bool:
         return False
 
