@@ -1,5 +1,6 @@
 import json
 import logging
+from contextlib import asynccontextmanager
 
 import aiohttp
 import asyncio
@@ -13,10 +14,35 @@ REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
 
 class DSRequestHandler:
-    def __init__(self, host: str, port: str, loop: asyncio.AbstractEventLoop = None):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        session: aiohttp.ClientSession = None,
+    ):
+        """
+        :param session: an optional shared session that stays owned by the
+            caller. Without one, a short-lived session (that doesn't verify
+            ssl certificates) is created per request.
+        """
         self.host = host
         self.port = port
-        self.loop = loop
+        self._session = session
+
+    @asynccontextmanager
+    async def session_scope(self):
+        """
+        yield the shared session, or a temporary one that is closed afterwards
+        """
+        if self._session is not None:
+            yield self._session
+            return
+
+        session = await self.get_aiohttp_session()
+        try:
+            yield session
+        finally:
+            await session.close()
 
     async def raw_request(self, url: str, retries : int = 2, interval = 0.9, backoff = 3, **kwargs) -> str:
         """
@@ -56,8 +82,7 @@ class DSRequestHandler:
 
             _LOGGER.debug("Raw Request to {url}, remaining attempts {attempt} of {retries}".format(url = log_url, attempt = attempt - 1, retries = retries))
 
-            # disable ssl verification for most servers miss valid certificates
-            async with await self.get_aiohttp_session() as session:
+            async with self.session_scope() as session:
                 try:
                     async with session.get(url=url, **kwargs) as response:
                         # check for server errors
@@ -80,16 +105,13 @@ class DSRequestHandler:
         if raised_exc:
             raise raised_exc
 
-    async def get_aiohttp_session(self, cookies: dict = None) -> aiohttp.ClientSession:
+    async def get_aiohttp_session(self) -> aiohttp.ClientSession:
         """
-        turn off ssl verification since most digitalstrom servers use
-        self-signed certificates
+        create a standalone session, ssl verification is turned off since
+        most digitalstrom servers use self-signed certificates
 
-        :param cookies: a dict of cookies to set on the connection
         :return the initialized aiohttp client session
         """
         return aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(family=socket.AF_INET, ssl=False),
-            cookies=cookies,
-            loop=self.loop,
         )

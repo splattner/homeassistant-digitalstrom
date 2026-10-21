@@ -1,37 +1,25 @@
 """The digitalSTROM integration."""
-import asyncio
 import logging
-import socket
-import urllib3
+from dataclasses import dataclass
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
     CONF_PORT,
-    CONF_USERNAME,
-    CONF_PASSWORD,
     CONF_ALIAS,
     CONF_TOKEN,
-    EVENT_HOMEASSISTANT_START,
-    EVENT_HOMEASSISTANT_STOP,
     Platform,
 )
-from homeassistant.exceptions import ConfigEntryNotReady, InvalidStateError
-from homeassistant.helpers.typing import ConfigType
-from homeassistant.core import CoreState, HomeAssistant
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers.start import async_at_start
 
 from .pydigitalstrom.client import DSClient
-from .pydigitalstrom.exceptions import DSException
+from .pydigitalstrom.exceptions import DSAuthenticationException, DSException
 from .pydigitalstrom.websocket import DSWebsocketEventListener
 
-from .const import (
-    DOMAIN,
-    HOST_FORMAT,
-    SLUG_FORMAT,
-    CONF_DELAY,
-    DEFAULT_DELAY,
-)
-from .util import slugify_entry
+from .const import CONF_DELAY, DEFAULT_DELAY
+from .util import get_session, slugify_entry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,34 +27,41 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.LIGHT, Platform.SWITCH, Platform.COVER, Platform.SCENE, Platform.SENSOR]
 
 
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """
-    load configuration for digitalSTROM component
-    """
-    # not configured
-    if DOMAIN not in config:
-        return True
+@dataclass
+class DigitalstromData:
+    """runtime data of a config entry"""
 
-    # already imported
-    if hass.config_entries.async_entries(DOMAIN):
-        return True
-
-    return True
+    client: DSClient
+    listener: DSWebsocketEventListener
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+type DigitalstromConfigEntry = ConfigEntry[DigitalstromData]
+
+
+def get_delay(entry: ConfigEntry) -> int:
+    """delay between commands, the options win over the initial setup"""
+    return entry.options.get(CONF_DELAY, entry.data.get(CONF_DELAY, DEFAULT_DELAY))
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: DigitalstromConfigEntry) -> bool:
     """
     set up digitalSTROM component from config entry
     """
     _LOGGER.debug("digitalstrom setup started")
 
-    # initialize component data
-    hass.data.setdefault(DOMAIN, dict())
-
     # old installations don't have an app token in their config entry
     if not entry.data.get(CONF_TOKEN, None):
-        raise InvalidStateError(
-            "No app token in config entry, please re-setup the integration"
+        raise ConfigEntryAuthFailed(
+            "No app token in config entry, please authenticate again"
+        )
+
+    # entries from before unique ids were used
+    if entry.unique_id is None:
+        hass.config_entries.async_update_entry(
+            entry,
+            unique_id=slugify_entry(
+                host=entry.data[CONF_HOST], port=entry.data[CONF_PORT]
+            ),
         )
 
     # setup client and listener
@@ -75,52 +70,64 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         port=entry.data[CONF_PORT],
         apptoken=entry.data[CONF_TOKEN],
         apartment_name=entry.data[CONF_ALIAS],
-        stack_delay=entry.data.get(CONF_DELAY, DEFAULT_DELAY),
-        loop=hass.loop,
+        stack_delay=get_delay(entry),
+        session=get_session(hass),
     )
     listener = DSWebsocketEventListener(client=client, event_name="callScene")
-
-    # store client in hass data for future usage
-    entry_slug = slugify_entry(host=entry.data[CONF_HOST], port=entry.data[CONF_PORT])
-    hass.data[DOMAIN].setdefault(entry_slug, dict())
-    hass.data[DOMAIN][entry_slug]["client"] = client
-    hass.data[DOMAIN][entry_slug]["listener"] = listener
 
     # load all scenes from digitalSTROM server
     # this fails often on the first connection, but works on the second
     try:
         await client.initialize()
+    except DSAuthenticationException as err:
+        raise ConfigEntryAuthFailed(f"App token rejected by {client.host}") from err
     except (DSException, RuntimeError, ConnectionResetError):
         try:
             await client.initialize()
-        except (DSException, RuntimeError, ConnectionResetError):
-            raise ConfigEntryNotReady(f"Failed to initialize digitalSTROM server at {client.host}")
+        except DSAuthenticationException as err:
+            raise ConfigEntryAuthFailed(f"App token rejected by {client.host}") from err
+        except (DSException, RuntimeError, ConnectionResetError) as err:
+            raise ConfigEntryNotReady(
+                f"Failed to initialize digitalSTROM server at {client.host}"
+            ) from err
 
     # we're connected
     _LOGGER.debug(f"Successfully retrieved session token from digitalSTROM server at {client.host}")
 
+    entry.runtime_data = DigitalstromData(client=client, listener=listener)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-
-    # start websocket listener and action delayer loops
-    async def digitalstrom_start_loops(event=None):
+    # start websocket listener and action delayer loops on hass startup,
+    # or right away if hass is already running (e.g. entry was just added)
+    async def digitalstrom_start_loops(hass: HomeAssistant) -> None:
         _LOGGER.info(f"loops started for digitalSTROM server at {client.host}")
-        hass.async_create_background_task(listener.start(), "digitalstrom-websocket-start")
-        hass.async_create_background_task(client.stack.start(), "digitalstrom-commandstack-start")
+        entry.async_create_background_task(
+            hass, listener.start(), "digitalstrom-websocket"
+        )
+        await client.stack.start()
 
-    # the start event only fires once, so if the entry is set up (or reloaded)
-    # while hass is already running we need to start the loops right away
-    if hass.state == CoreState.running:
-        await digitalstrom_start_loops()
-    else:
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, digitalstrom_start_loops)
+    entry.async_on_unload(async_at_start(hass, digitalstrom_start_loops))
 
-    # start websocket listener and action delayer loops on hass shutdown
-    async def digitalstrom_stop_loops(event):
-        _LOGGER.info(f"loops stopped for digitalSTROM server at {client.host}")
-        hass.async_create_background_task(client.stack.stop(), "digitalstrom-commandstack-stop")
-        hass.async_create_background_task(listener.stop(), "digitalstrom-websocket-stop")
-
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, digitalstrom_stop_loops)
+    # apply changed options
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: DigitalstromConfigEntry) -> bool:
+    """
+    unload a config entry, stops the loops and removes the entities
+    """
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        data = entry.runtime_data
+        await data.listener.stop()
+        await data.client.stack.stop()
+        _LOGGER.info(f"loops stopped for digitalSTROM server at {data.client.host}")
+    return unload_ok
+
+
+async def _async_update_listener(hass: HomeAssistant, entry: DigitalstromConfigEntry) -> None:
+    """reload the entry when the options changed"""
+    await hass.config_entries.async_reload(entry.entry_id)

@@ -11,3 +11,7 @@ class DSRequestException(DSException):
 
 class DSCommandFailedException(DSException):
     pass
+
+
+class DSAuthenticationException(DSCommandFailedException):
+    """the server rejected our credentials or app token"""

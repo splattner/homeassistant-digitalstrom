@@ -1,4 +1,2 @@
-aiohttp
-pytest
-pytest-asyncio
-urllib3
+# needs python 3.13 (home assistant 2025.x and newer)
+pytest-homeassistant-custom-component

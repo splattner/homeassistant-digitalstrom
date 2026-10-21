@@ -1,12 +1,15 @@
 {
   "domain": "digitalstrom",
   "name": "digitalSTROM",
-  "documentation": "https://www.home-assistant.io/components/digitalstrom",
-  "requirements": [],
-  "dependencies": [],
-  "version": "0.0.1",
   "codeowners": [
     "@splattner"
   ],
-  "config_flow": true
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/splattner/homeassistant-digitalstrom",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/splattner/homeassistant-digitalstrom/issues",
+  "requirements": [],
+  "version": "0.0.1"
 }

@@ -1,44 +1,28 @@
 # -*- coding: UTF-8 -*-
 import logging
-from typing import Callable, Union
+from typing import Union
 
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfPower, UnitOfEnergy, CONF_HOST, CONF_PORT
-from homeassistant.helpers.typing import ConfigType
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.const import UnitOfPower, UnitOfEnergy
 from homeassistant.core import HomeAssistant
 from .pydigitalstrom.client import DSClient
 from .pydigitalstrom.devices.meter import DSMeter
-from homeassistant.util import dt
 
 
+from . import DigitalstromConfigEntry
 from .const import DOMAIN
-from .util import slugify_entry
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
-    async_add_devices: Callable,
-    discovery_info: dict = None,
-):
-    """Platform uses config entry setup."""
-    pass
-
-
 async def async_setup_entry(
-    hass: HomeAssistant, 
-    entry: ConfigEntry, 
-    async_add_entities: Callable
+    hass: HomeAssistant,
+    entry: DigitalstromConfigEntry,
+    async_add_entities: AddEntitiesCallback
 ) -> None:
 
-    entry_slug: str = slugify_entry(
-        host=entry.data[CONF_HOST], port=entry.data[CONF_PORT]
-    )
-
-    client: DSClient = hass.data[DOMAIN][entry_slug]["client"]
+    client: DSClient = entry.runtime_data.client
     
     devices: dict = []
     meters: dict = client.get_meters()

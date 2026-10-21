@@ -9,26 +9,34 @@
           "port": "Port",
           "username": "Username",
           "password": "Password",
-          "apartment": "Apartment name",
+          "alias": "Apartment name",
           "delay": "Delay between single commands (in ms)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Authenticate again",
+        "description": "The app token for the digitalSTROM server {host} is missing or was rejected. Enter your credentials to request a new one. They are not stored.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
         }
       }
     },
     "error": {
-      "already_configured": "This digitalSTROM server is already set up.",
-      "already_discovered": "This digitalSTROM server was already discovered.",
-      "communication_error": "Unable to communicate with the server, please check host, username and password."
+      "cannot_connect": "Unable to communicate with the server, please check host and port.",
+      "invalid_auth": "The server rejected the username or password."
     },
     "abort": {
-      "not_digitalstrom_server": "Discovered device is not a digitalSTROM server"
+      "already_configured": "This digitalSTROM server is already set up.",
+      "reauth_successful": "Authentication was successful."
     }
   },
   "options": {
     "step": {
       "init": {
-        "description": "Options for the digitalSTROM component. Which generic scenes should be added?",
+        "title": "digitalSTROM options",
         "data": {
-          "generic_scenes": "Visible generic scenes"
+          "delay": "Delay between single commands (in ms)"
         }
       }
     }

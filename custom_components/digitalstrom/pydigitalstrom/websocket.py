@@ -22,11 +22,19 @@ class DSWebsocketEventListener:
         self._running = False
         self._last_keepalive = None
 
-    def register(self, callback: callable):
+    def register(self, callback: callable) -> callable:
+        """
+        register an async event callback
+
+        :return: a function that removes the callback again
+        """
         self._callbacks.append(callback)
 
-    async def _get_cookie(self):
-        return dict(token=await self._client.get_session_token())
+        def unregister() -> None:
+            if callback in self._callbacks:
+                self._callbacks.remove(callback)
+
+        return unregister
 
     async def start(self):
         """
@@ -58,35 +66,41 @@ class DSWebsocketEventListener:
 
         :return: True if a connection was established
         """
-        session = await self._client.get_aiohttp_session(
-            cookies=await self._get_cookie()
-        )
+        token = await self._client.get_session_token()
         url = f"wss://{self._client.host}:{self._client.port}/websocket"
 
-        try:
-            async with session.ws_connect(url=url) as ws:
+        # the session might be shared, so send the token as header instead of
+        # putting it in the session cookie jar
+        async with self._client.session_scope() as session:
+            async with session.ws_connect(
+                url=url, headers={"Cookie": f"token={token}"}
+            ) as ws:
                 self._ws = ws
-                _LOGGER.debug("WS connected")
-                async for msg in ws:
-                    if msg.type == aiohttp.WSMsgType.TEXT:
-                        try:
-                            event = json.loads(msg.data)
-                        except json.JSONDecodeError:
-                            _LOGGER.warning("DS websocket got invalid json: %s", msg.data)
-                            continue
-                        await self._handle_event(event=event)
-                    elif msg.type in (
-                        aiohttp.WSMsgType.CLOSED,
-                        aiohttp.WSMsgType.CLOSING,
-                        aiohttp.WSMsgType.ERROR,
-                    ):
-                        _LOGGER.warning("DS websocket closed or error: %s", msg)
-                        break
-                    else:
-                        _LOGGER.warning("DS websocket got unknown message: %s", msg)
-        finally:
-            self._ws = None
-            await session.close()
+                try:
+                    _LOGGER.debug("WS connected")
+                    async for msg in ws:
+                        if msg.type == aiohttp.WSMsgType.TEXT:
+                            try:
+                                event = json.loads(msg.data)
+                            except json.JSONDecodeError:
+                                _LOGGER.warning(
+                                    "DS websocket got invalid json: %s", msg.data
+                                )
+                                continue
+                            await self._handle_event(event=event)
+                        elif msg.type in (
+                            aiohttp.WSMsgType.CLOSED,
+                            aiohttp.WSMsgType.CLOSING,
+                            aiohttp.WSMsgType.ERROR,
+                        ):
+                            _LOGGER.warning("DS websocket closed or error: %s", msg)
+                            break
+                        else:
+                            _LOGGER.warning(
+                                "DS websocket got unknown message: %s", msg
+                            )
+                finally:
+                    self._ws = None
 
         return True
 
@@ -107,7 +121,7 @@ class DSWebsocketEventListener:
 
         # subscribed event
         if event["name"] == self._event_name:
-            for callback in self._callbacks:
+            for callback in list(self._callbacks):
                 # one broken subscriber must not stop the others or the listener
                 try:
                     await callback(event=event)

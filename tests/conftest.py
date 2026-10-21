@@ -1,89 +1,23 @@
-"""Shared fixtures.
-
-The tests deliberately do not need Home Assistant installed: the few
-homeassistant modules the integration imports are replaced by stubs, which is
-enough to test the pydigitalstrom library against a fake dSS and the entity
-logic in isolation.
-"""
+"""Shared fixtures: a fake digitalSTROM server and helpers to set up the integration."""
 import asyncio
-import enum
 import shutil
 import ssl
 import subprocess
-import sys
-from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 import pytest_asyncio
 from aiohttp import web
+from homeassistant.config_entries import ConfigEntryState
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from custom_components.digitalstrom.const import DOMAIN
 
-HA_MODULES = [
-    "homeassistant",
-    "homeassistant.components",
-    "homeassistant.components.cover",
-    "homeassistant.components.light",
-    "homeassistant.config_entries",
-    "homeassistant.const",
-    "homeassistant.core",
-    "homeassistant.exceptions",
-    "homeassistant.helpers",
-    "homeassistant.helpers.restore_state",
-    "homeassistant.helpers.typing",
-    "homeassistant.util",
-]
+pytest_plugins = "pytest_homeassistant_custom_component"
 
 
-class StubEntity:
-    """Stands in for RestoreEntity / LightEntity base classes."""
-
-    def __init__(self, *args, **kwargs):
-        self.state_writes = 0
-
-    def async_write_ha_state(self):
-        self.state_writes += 1
-
-    async def async_added_to_hass(self):
-        pass
-
-    async def async_get_last_state(self):
-        return None
-
-
-class StubLightEntity:
-    pass
-
-
-class StubCoverEntity:
-    pass
-
-
-class StubCoverEntityFeature(enum.IntFlag):
-    """like the real enum, the old SUPPORT_* aliases do not exist"""
-
-    OPEN = 1
-    CLOSE = 2
-
-
-def _install_homeassistant_stubs():
-    for name in HA_MODULES:
-        sys.modules[name] = MagicMock()
-    sys.modules["homeassistant.components.cover"].CoverEntity = StubCoverEntity
-    sys.modules[
-        "homeassistant.components.cover"
-    ].CoverEntityFeature = StubCoverEntityFeature
-    sys.modules["homeassistant.components.light"].LightEntity = StubLightEntity
-    sys.modules["homeassistant.components.light"].ATTR_EFFECT = "effect"
-    sys.modules["homeassistant.helpers.restore_state"].RestoreEntity = StubEntity
-    sys.modules["homeassistant.const"].CONF_HOST = "host"
-    sys.modules["homeassistant.const"].CONF_PORT = "port"
-    sys.modules["homeassistant.const"].STATE_ON = "on"
-    sys.modules["homeassistant.util"].slugify = lambda value: value
-
-
-_install_homeassistant_stubs()
+@pytest.fixture(autouse=True)
+def auto_enable_custom_integrations(enable_custom_integrations):
+    """load the integration from custom_components"""
 
 
 @pytest.fixture(scope="session")
@@ -113,16 +47,34 @@ class FakeDSS:
     def __init__(self):
         self.host = "127.0.0.1"
         self.port = None
+
+        # behaviour
+        self.app_token = "apptoken"
+        self.reachable_scenes = [0, 5]
+        self.meters = []  # dSUIDs
+        self.reject_login = False  # wrong username / password
+        self.reject_app_token = False  # revoked app token
+        self.fail_enable_token = False
+        self.http_status = None  # answer every json request with this status
+        self.fail_scene_calls = 0
+        # "drop": send one event and close, clients have to reconnect
+        # "hold": keep the connection open, use push_event
+        self.ws_mode = "drop"
+
+        # recordings
         self.login_params = None
         self.scene_calls = []
-        self.fail_scene_calls = 0
         self.ws_connections = 0
-        self.reachable_scenes = [0, 5]
-        self.fail_enable_token = False
+        self.ws_cookies = []
+        self._sockets = []
 
     @staticmethod
     def _ok(result=None):
         return web.json_response({"ok": True, "result": result})
+
+    @staticmethod
+    def _failed(message):
+        return web.json_response({"ok": False, "message": message})
 
     def _handler(self, result):
         """async handler answering with a fixed (or lazily computed) result"""
@@ -132,13 +84,36 @@ class FakeDSS:
 
         return handler
 
+    @web.middleware
+    async def _middleware(self, request, handler):
+        if self.http_status and request.path.startswith("/json/"):
+            return web.Response(status=self.http_status, text="server error")
+        return await handler(request)
+
+    async def _request_application_token(self, request):
+        return self._ok({"applicationToken": self.app_token})
+
     async def _login(self, request):
         self.login_params = dict(request.query)
+        if self.reject_login:
+            return self._failed("Authentication failed")
         return self._ok({"token": "temptoken"})
 
     async def _enable_token(self, request):
         if self.fail_enable_token:
-            return web.json_response({"ok": False, "message": "invalid token"})
+            return self._failed("invalid token")
+        return self._ok()
+
+    async def _login_application(self, request):
+        if self.reject_app_token:
+            return self._failed("Application-Authentication failed")
+        return self._ok({"token": "sessiontoken"})
+
+    async def _call_scene(self, request):
+        self.scene_calls.append(request.query["sceneNumber"])
+        if self.fail_scene_calls > 0:
+            self.fail_scene_calls -= 1
+            return self._failed("failed")
         return self._ok()
 
     async def _error(self, request):
@@ -148,62 +123,99 @@ class FakeDSS:
         await asyncio.sleep(0.5)
         return self._ok()
 
-    async def _call_scene(self, request):
-        self.scene_calls.append(request.query["sceneNumber"])
-        if self.fail_scene_calls > 0:
-            self.fail_scene_calls -= 1
-            return web.json_response({"ok": False, "message": "failed"})
-        return self._ok()
+    async def _meter_children(self, request):
+        return self._ok([{"name": dsuid} for dsuid in self.meters])
+
+    async def _meter_property(self, request):
+        # /apartment/dSMeters/<dsuid>/<name|dSID>
+        _, _, _, dsuid, prop = request.query["path"].split("/")
+        return self._ok({"value": f"Meter {dsuid}" if prop == "name" else f"dsid-{dsuid}"})
+
+    async def _metering(self, request):
+        value = 1500.0 if request.query["type"] == "energy" else 42.0
+        return self._ok({"values": [{"value": value}]})
 
     async def _websocket(self, request):
-        """send one event and drop the connection, clients have to reconnect"""
         self.ws_connections += 1
+        self.ws_cookies.append(request.headers.get("Cookie"))
         socket = web.WebSocketResponse()
         await socket.prepare(request)
-        await socket.send_json(
-            {"name": "callScene", "properties": {"connection": self.ws_connections}}
-        )
-        await socket.close()
+
+        if self.ws_mode == "drop":
+            await socket.send_json(
+                {"name": "callScene", "properties": {"connection": self.ws_connections}}
+            )
+            await socket.close()
+            return socket
+
+        self._sockets.append(socket)
+        try:
+            async for _ in socket:
+                pass
+        finally:
+            self._sockets.remove(socket)
         return socket
 
+    async def push_event(self, event: dict) -> None:
+        """send an event to all connected websocket clients"""
+        for socket in list(self._sockets):
+            await socket.send_json(event)
+
+    async def push_scene(self, zone_id: int, group_id: int, scene_id: int) -> None:
+        await self.push_event(
+            {
+                "name": "callScene",
+                "properties": {
+                    "zoneID": str(zone_id),
+                    "groupID": str(group_id),
+                    "sceneID": str(scene_id),
+                },
+            }
+        )
+
+    async def close_sockets(self) -> None:
+        for socket in list(self._sockets):
+            await socket.close()
+
     def app(self) -> web.Application:
-        app = web.Application()
-        app.router.add_get(
-            "/json/system/requestApplicationToken",
-            self._handler({"applicationToken": "apptoken"}),
-        )
-        app.router.add_get("/json/system/login", self._login)
-        app.router.add_get("/json/system/enableToken", self._enable_token)
-        app.router.add_get("/json/test/error", self._error)
-        app.router.add_get("/json/test/slow", self._slow)
-        app.router.add_get(
-            "/json/system/loginApplication",
-            self._handler({"token": "sessiontoken"}),
-        )
-        app.router.add_get(
+        app = web.Application(middlewares=[self._middleware])
+        get = app.router.add_get
+        get("/json/system/requestApplicationToken", self._request_application_token)
+        get("/json/system/login", self._login)
+        get("/json/system/enableToken", self._enable_token)
+        get("/json/system/loginApplication", self._login_application)
+        get(
             "/json/property/query2",
             self._handler(
                 {
                     "zone0": {
                         "name": "",
                         "ZoneID": 0,
-                        "group1": {"group": 1, "color": 1},
+                        "group1": {
+                            "group": 1,
+                            "color": 1,
+                            "scene0": {"scene": 40, "name": "Movie Night"},
+                        },
                     }
                 }
             ),
         )
-        app.router.add_get(
+        get(
             "/json/zone/getReachableScenes",
             self._handler(lambda: {"reachableScenes": self.reachable_scenes}),
         )
-        app.router.add_get("/json/property/getChildren", self._handler([]))
-        app.router.add_get("/json/zone/callScene", self._call_scene)
-        app.router.add_get("/websocket", self._websocket)
+        get("/json/property/getChildren", self._meter_children)
+        get("/json/property/getString", self._meter_property)
+        get("/json/metering/getLatest", self._metering)
+        get("/json/zone/callScene", self._call_scene)
+        get("/json/test/error", self._error)
+        get("/json/test/slow", self._slow)
+        get("/websocket", self._websocket)
         return app
 
 
 @pytest_asyncio.fixture
-async def dss(ssl_context):
+async def dss(ssl_context, socket_enabled):
     server = FakeDSS()
     runner = web.AppRunner(server.app())
     await runner.setup()
@@ -211,4 +223,48 @@ async def dss(ssl_context):
     await site.start()
     server.port = runner.addresses[0][1]
     yield server
+    await server.close_sockets()
     await runner.cleanup()
+
+
+def make_entry(dss: FakeDSS, **overrides) -> MockConfigEntry:
+    data = {
+        "host": dss.host,
+        "port": dss.port,
+        "token": "apptoken",
+        "alias": "Apartment",
+        "delay": 10,
+    }
+    data.update(overrides)
+    return MockConfigEntry(
+        domain=DOMAIN, data={k: v for k, v in data.items() if v is not None}
+    )
+
+
+@pytest_asyncio.fixture
+async def setup_entry(hass, dss):
+    """set up the integration against the fake dSS, unload it after the test"""
+    entries = []
+
+    async def setup(**overrides) -> MockConfigEntry:
+        dss.ws_mode = "hold"
+        entry = make_entry(dss, **overrides)
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        entries.append(entry)
+        return entry
+
+    yield setup
+
+    for entry in entries:
+        if entry.state is ConfigEntryState.LOADED:
+            await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def wait_for(predicate, timeout: float = 5.0) -> None:
+    """wait for something that happens in a background task"""
+    async with asyncio.timeout(timeout):
+        while not predicate():
+            await asyncio.sleep(0.02)

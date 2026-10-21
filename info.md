@@ -2,7 +2,7 @@
 
 This integration makes digitalSTROM lights, covers, switches and scenes available in Home Assistant.
 
-It supports config flows so that you can easily add your digitalSTROM server from the Home Assistant frontend (Configuration -> Integrations).
+It supports config flows so that you can easily add your digitalSTROM server from the Home Assistant frontend (Settings -> Devices & services).
 
 However it does not support YAML config setup (anymore). The future is the frontend!
 
@@ -36,6 +36,10 @@ Every scene that is not an area light or cover scene is exposed as a regular sce
 ### Meters
 
 Every power meter.
+
+## Options and authentication
+
+The delay between commands can be changed at any time in the integration's options. If the app token is missing or was revoked in the digitalSTROM server, Home Assistant asks you to authenticate again; your password is only used to request a new token and is not stored.
 
 ## BREAKING CHANGES
 

@@ -21,15 +21,15 @@ For now, you have to [add the repository yourself](https://hacs.netlify.com/usag
 
 ## Are there any limitations?
 
-Yes. Based on the nature of how digitalSTROM servers communicate with single devices, a digitalSTROM installation can easily be overwhelmed with too many commands. It is therefore recommended to not issue more than 2-3 commands per second. This integration takes care of that by handling one command after the other. The default delay is 500ms but can be changed when setting up the integration.
+Yes. Based on the nature of how digitalSTROM servers communicate with single devices, a digitalSTROM installation can easily be overwhelmed with too many commands. It is therefore recommended to not issue more than 2-3 commands per second. This integration takes care of that by handling one command after the other. The default delay is 500ms. It can be changed when setting up the integration and later in the integration's options (Configure).
 
 
 ## Development
 
-The tests run without a Home Assistant installation (the few HA modules the integration imports are stubbed in `tests/conftest.py`) and need `openssl` to create a throw-away certificate for the fake dSS.
+The tests use [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component), so they run the integration in a real Home Assistant core against a fake digitalSTROM server (TLS, websocket). That needs a recent Python (3.13 at the time of writing) and `openssl` to create a throw-away certificate.
 
 ```
-python -m venv .venv && . .venv/bin/activate
+python3.13 -m venv .venv && . .venv/bin/activate
 pip install -r requirements_test.txt
 pytest
 ```

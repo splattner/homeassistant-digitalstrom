@@ -41,5 +41,6 @@ class DSCommandStack:
 
     async def stop(self):
         if self._task is not None:
-            self._task.cancel()
-            self._task = None
+            task, self._task = self._task, None
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
