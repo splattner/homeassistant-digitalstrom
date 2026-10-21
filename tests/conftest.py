@@ -5,6 +5,8 @@ homeassistant modules the integration imports are replaced by stubs, which is
 enough to test the pydigitalstrom library against a fake dSS and the entity
 logic in isolation.
 """
+import asyncio
+import enum
 import shutil
 import ssl
 import subprocess
@@ -21,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 HA_MODULES = [
     "homeassistant",
     "homeassistant.components",
+    "homeassistant.components.cover",
     "homeassistant.components.light",
     "homeassistant.config_entries",
     "homeassistant.const",
@@ -53,9 +56,24 @@ class StubLightEntity:
     pass
 
 
+class StubCoverEntity:
+    pass
+
+
+class StubCoverEntityFeature(enum.IntFlag):
+    """like the real enum, the old SUPPORT_* aliases do not exist"""
+
+    OPEN = 1
+    CLOSE = 2
+
+
 def _install_homeassistant_stubs():
     for name in HA_MODULES:
         sys.modules[name] = MagicMock()
+    sys.modules["homeassistant.components.cover"].CoverEntity = StubCoverEntity
+    sys.modules[
+        "homeassistant.components.cover"
+    ].CoverEntityFeature = StubCoverEntityFeature
     sys.modules["homeassistant.components.light"].LightEntity = StubLightEntity
     sys.modules["homeassistant.components.light"].ATTR_EFFECT = "effect"
     sys.modules["homeassistant.helpers.restore_state"].RestoreEntity = StubEntity
@@ -100,6 +118,7 @@ class FakeDSS:
         self.fail_scene_calls = 0
         self.ws_connections = 0
         self.reachable_scenes = [0, 5]
+        self.fail_enable_token = False
 
     @staticmethod
     def _ok(result=None):
@@ -116,6 +135,18 @@ class FakeDSS:
     async def _login(self, request):
         self.login_params = dict(request.query)
         return self._ok({"token": "temptoken"})
+
+    async def _enable_token(self, request):
+        if self.fail_enable_token:
+            return web.json_response({"ok": False, "message": "invalid token"})
+        return self._ok()
+
+    async def _error(self, request):
+        return web.Response(status=500, text="kaboom")
+
+    async def _slow(self, request):
+        await asyncio.sleep(0.5)
+        return self._ok()
 
     async def _call_scene(self, request):
         self.scene_calls.append(request.query["sceneNumber"])
@@ -142,7 +173,9 @@ class FakeDSS:
             self._handler({"applicationToken": "apptoken"}),
         )
         app.router.add_get("/json/system/login", self._login)
-        app.router.add_get("/json/system/enableToken", self._handler(None))
+        app.router.add_get("/json/system/enableToken", self._enable_token)
+        app.router.add_get("/json/test/error", self._error)
+        app.router.add_get("/json/test/slow", self._slow)
         app.router.add_get(
             "/json/system/loginApplication",
             self._handler({"token": "sessiontoken"}),

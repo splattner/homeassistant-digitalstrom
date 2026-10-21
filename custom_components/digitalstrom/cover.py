@@ -88,7 +88,7 @@ class DigitalstromCover(CoverEntity):
     @property
     def supported_features(self) -> int:
         """Flag supported features."""
-        return CoverEntityFeature.SUPPORT_OPEN | CoverEntityFeature.SUPPORT_CLOSE
+        return CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE
 
     @property
     def name(self) -> str:

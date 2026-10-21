@@ -2,6 +2,7 @@
 import asyncio
 import logging
 
+import aiohttp
 import pytest
 
 from custom_components.digitalstrom.pydigitalstrom import websocket
@@ -9,6 +10,10 @@ from custom_components.digitalstrom.pydigitalstrom.apptokenhandler import (
     DSAppTokenHandler,
 )
 from custom_components.digitalstrom.pydigitalstrom.client import DSClient
+from custom_components.digitalstrom.pydigitalstrom.exceptions import (
+    DSCommandFailedException,
+    DSRequestException,
+)
 from custom_components.digitalstrom.pydigitalstrom.websocket import (
     DSWebsocketEventListener,
 )
@@ -33,6 +38,50 @@ async def test_apptoken_credentials_are_url_encoded(dss):
 
     assert await handler.request_apptoken() == "apptoken"
     assert dss.login_params == {"user": "dssadmin", "password": TRICKY_PASSWORD}
+
+
+async def test_failed_token_activation_raises_instead_of_returning_no_token(dss):
+    dss.fail_enable_token = True
+    handler = DSAppTokenHandler(dss.host, dss.port, "dssadmin", "secret")
+
+    with pytest.raises(DSCommandFailedException):
+        await handler.request_apptoken()
+
+
+async def test_server_error_exception_contains_response_text(dss):
+    handler = DSAppTokenHandler(dss.host, dss.port, "dssadmin", "secret")
+
+    with pytest.raises(DSRequestException, match="kaboom"):
+        await handler.raw_request("/json/test/error", retries=0)
+
+
+async def test_request_timeout_is_a_request_exception(dss):
+    handler = DSAppTokenHandler(dss.host, dss.port, "dssadmin", "secret")
+
+    with pytest.raises(DSRequestException):
+        await handler.raw_request(
+            "/json/test/slow", retries=0, timeout=aiohttp.ClientTimeout(total=0.1)
+        )
+
+
+async def test_requests_have_a_default_timeout(dss, monkeypatch):
+    seen = {}
+
+    class Recorder(DSAppTokenHandler):
+        async def get_aiohttp_session(self, cookies=None):
+            session = await super().get_aiohttp_session(cookies)
+            original_get = session.get
+
+            def get(**kwargs):
+                seen.update(kwargs)
+                return original_get(**kwargs)
+
+            session.get = get
+            return session
+
+    await Recorder(dss.host, dss.port, "u", "p").get_application_token_from_server()
+
+    assert seen["timeout"].total == 30
 
 
 async def test_request_logging_never_contains_secrets(dss, caplog):

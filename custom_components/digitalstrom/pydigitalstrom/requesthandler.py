@@ -8,6 +8,9 @@ from .exceptions import DSCommandFailedException, DSRequestException
 
 _LOGGER = logging.getLogger(__name__)
 
+# a dSS that doesn't answer must not block callers (and the command stack) forever
+REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30)
+
 
 class DSRequestHandler:
     def __init__(self, host: str, port: str, loop: asyncio.AbstractEventLoop = None):
@@ -36,6 +39,8 @@ class DSRequestHandler:
         else:  # any other value means retry N times
             attempt = retries + 1
 
+        kwargs.setdefault("timeout", REQUEST_TIMEOUT)
+
         backoff_interval = interval
         raised_exc = None
 
@@ -57,7 +62,7 @@ class DSRequestHandler:
                     async with session.get(url=url, **kwargs) as response:
                         # check for server errors
                         if not response.status == 200:
-                            raise DSRequestException(response.text)
+                            raise DSRequestException(await response.text())
 
                         try:
                             data = await response.json()
@@ -66,8 +71,8 @@ class DSRequestHandler:
                         if "ok" not in data or not data["ok"]:
                             raise DSCommandFailedException()
                         return data
-                except aiohttp.ClientError:
-                    # Only retry on this Error
+                except (aiohttp.ClientError, asyncio.TimeoutError):
+                    # Only retry on these Errors
                     raised_exc = DSRequestException("request failed")
 
             attempt -= 1

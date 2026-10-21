@@ -1,5 +1,3 @@
-from typing import Optional
-
 import aiohttp
 import asyncio
 
@@ -27,18 +25,17 @@ class DSAppTokenHandler(DSRequestHandler):
 
         super().__init__(host=host, port=port, loop=loop)
 
-    async def request_apptoken(self) -> Optional[str]:
+    async def request_apptoken(self) -> str:
         """
         request a new app token from the server
+
+        :raises: DSException if the token could not be requested or activated
         """
         # get fresh app token and activate it
         apptoken = await self.get_application_token_from_server()
         temptoken = await self.get_temp_token()
-        if await self.activate_application_token(
-            apptoken=apptoken, temptoken=temptoken
-        ):
-            return apptoken
-        return None
+        await self.activate_application_token(apptoken=apptoken, temptoken=temptoken)
+        return apptoken
 
     async def get_application_token_from_server(self) -> str:
         """
@@ -62,12 +59,13 @@ class DSAppTokenHandler(DSRequestHandler):
             raise DSException("invalid api response")
         return data["result"]["token"]
 
-    async def activate_application_token(self, apptoken, temptoken) -> bool:
+    async def activate_application_token(self, apptoken, temptoken) -> None:
         """
         activate our app token using the authenticated temp token
+
+        :raises: DSCommandFailedException if the server rejects the activation
         """
         await self.raw_request(
             self.URL_ACTIVATE,
             params=dict(applicationToken=apptoken, token=temptoken),
         )
-        return True
