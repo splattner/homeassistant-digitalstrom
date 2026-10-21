@@ -1,6 +1,4 @@
 """Tests for the power meter sensors."""
-from .conftest import wait_for
-
 
 async def update(hass, entity_id: str) -> None:
     await hass.services.async_call(
