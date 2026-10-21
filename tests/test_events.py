@@ -31,6 +31,7 @@ async def test_scene_call_fires_event_with_names(hass, dss, setup_entry):
         "group_id": 1,
         "scene_id": 5,
         "scene_name": "Preset1",
+        "origin_device_id": None,
         "properties": {
             "zoneID": "0",
             "groupID": "1",
@@ -38,6 +39,29 @@ async def test_scene_call_fires_event_with_names(hass, dss, setup_entry):
             "originDSUID": "abc",
         },
     }
+
+
+async def test_event_tells_which_device_called_the_scene(hass, dss, setup_entry):
+    """the dSS reports the dSID of the device (e.g. a button) in originDeviceID"""
+    await setup_entry()
+    events = async_capture_events(hass, EVENT_SCENE_CALLED)
+    await wait_for(lambda: len(dss._sockets) == 1)
+
+    await dss.push_event(
+        {
+            "name": "callScene",
+            "properties": {
+                "zoneID": "0",
+                "groupID": "1",
+                "sceneID": "5",
+                "originDeviceID": "3504175fe000000000005854",
+            },
+        }
+    )
+    await wait_for(lambda: len(events) == 1)
+
+    assert events[0].data["origin_device_id"] == "3504175fe000000000005854"
+    assert events[0].data["properties"]["originDeviceID"] == "3504175fe000000000005854"
 
 
 async def test_standard_scenes_without_entity_have_a_name(hass, dss, setup_entry):

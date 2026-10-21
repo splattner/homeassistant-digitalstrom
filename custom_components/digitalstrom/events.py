@@ -34,8 +34,9 @@ def async_create_scene_event_callback(hass: HomeAssistant, entry_id: str, client
     create a websocket callback that fires EVENT_SCENE_CALLED
 
     The event also fires for scenes called by Home Assistant itself, as the
-    server reports every call. All properties of the original event are kept
-    in "properties", e.g. to tell where a call came from.
+    server reports every call. origin_device_id is the dSID of the device (for
+    example the button) that caused the call, if the server tells. All
+    properties of the original event are kept in "properties".
     """
 
     async def event_callback(event: dict) -> None:
@@ -57,6 +58,7 @@ def async_create_scene_event_callback(hass: HomeAssistant, entry_id: str, client
                 "group_id": group_id,
                 "scene_id": scene_id,
                 "scene_name": scene_name(client, zone_id, group_id, scene_id),
+                "origin_device_id": properties.get("originDeviceID"),
                 "properties": properties,
             },
         )
