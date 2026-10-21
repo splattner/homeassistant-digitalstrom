@@ -1,0 +1,26 @@
+name: Validate
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    # new Home Assistant releases can break the integration without a commit
+    - cron: "0 4 * * *"
+
+jobs:
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hacs/action@main
+        with:
+          category: integration
+          # the integration is not part of home-assistant/brands
+          ignore: brands
