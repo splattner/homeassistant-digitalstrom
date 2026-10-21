@@ -282,6 +282,14 @@ class DSClient(DSRequestHandler):
     def get_scenes(self):
         return self._scenes
 
+    def get_zone_names(self) -> dict:
+        """names of all named zones by zone id"""
+        return dict(self._zones)
+
+    def get_last_called_scenes(self) -> dict:
+        """scene called last by (zone id, group id or None), as read at setup"""
+        return dict(self._last_called)
+
     def get_zone_name(self, zone_id: int):
         """name of a zone, None for unknown or unnamed zones"""
         return self._zones.get(zone_id)

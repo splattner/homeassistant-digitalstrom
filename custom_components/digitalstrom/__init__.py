@@ -19,6 +19,7 @@ from .pydigitalstrom.exceptions import DSAuthenticationException, DSException
 from .pydigitalstrom.websocket import DSWebsocketEventListener
 
 from .const import CONF_DELAY, DEFAULT_DELAY
+from .coordinator import DigitalstromMeterCoordinator
 from .events import async_create_scene_event_callback
 from .util import get_option, get_session, slugify_entry
 
@@ -34,6 +35,8 @@ class DigitalstromData:
 
     client: DSClient
     listener: DSWebsocketEventListener
+    # created by the sensor platform if the server has meters
+    meter_coordinator: "DigitalstromMeterCoordinator | None" = None
 
 
 type DigitalstromConfigEntry = ConfigEntry[DigitalstromData]
