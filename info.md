@@ -39,6 +39,10 @@ Every scene that is not an area light or cover scene is exposed as a regular sce
 
 Every power meter that delivers readings, with a power and an energy sensor. Meters that don't deliver any (for example virtual ones from the vdc-bridge) get no sensors. A meter that only starts delivering later is picked up when the integration is reloaded.
 
+## Changing the server
+
+If the digitalSTROM server gets a new address, change it under *Reconfigure* in the integration's menu instead of setting it up again. If the stored app token is still valid there, nothing else is needed; otherwise you are asked for your credentials once to get a new token. Entities and their history are kept.
+
 ## Options and authentication
 
 The delay between commands and the interval for reading the power meters (default 30 seconds) can be changed at any time in the integration's options. If the app token is missing or was revoked in the digitalSTROM server, Home Assistant asks you to authenticate again; your password is only used to request a new token and is not stored.

@@ -19,6 +19,23 @@
           "username": "Benutzername",
           "password": "Passwort"
         }
+      },
+      "reconfigure": {
+        "title": "Server ändern",
+        "description": "Ändere die Adresse oder den Namen dieses digitalSTROM-Servers.",
+        "data": {
+          "host": "Server",
+          "port": "Port (i.d.R. 8080)",
+          "alias": "Name der Installation"
+        }
+      },
+      "reconfigure_credentials": {
+        "title": "Erneut authentifizieren",
+        "description": "Der digitalSTROM-Server unter {host} kennt das gespeicherte App-Token nicht, es könnte ein anderer Server sein. Gib deine Zugangsdaten ein, um ein neues Token anzufordern. Sie werden nicht gespeichert.",
+        "data": {
+          "username": "Benutzername",
+          "password": "Passwort"
+        }
       }
     },
     "error": {
@@ -27,7 +44,8 @@
     },
     "abort": {
       "already_configured": "Dieser digitalSTROM-Server ist bereits eingerichtet.",
-      "reauth_successful": "Die Authentifizierung war erfolgreich."
+      "reauth_successful": "Die Authentifizierung war erfolgreich.",
+      "reconfigure_successful": "Der Server wurde geändert."
     }
   },
   "options": {
