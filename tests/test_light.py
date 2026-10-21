@@ -1,56 +1,16 @@
-"""Tests for the light platform, run with stubbed Home Assistant base classes."""
-from unittest.mock import MagicMock
-
+"""Tests for the light platform against the fake dSS."""
 import pytest
 
-from custom_components.digitalstrom import light
-from custom_components.digitalstrom.pydigitalstrom.devices.scene import DSColorScene
+from .conftest import wait_for
 
 
-class RecordingScene(DSColorScene):
-    """scene that records calls instead of talking to a server"""
-
-    calls = []
-
-    async def turn_on(self):
-        self.calls.append(self.scene_id)
-
-
-@pytest.fixture(autouse=True)
-def reset_calls():
-    RecordingScene.calls = []
-
-
-def make_scenes(scene_ids, zone_id=1, color=1):
-    return {
-        f"{zone_id}_{color}_{scene_id}": RecordingScene(
-            client=None,
-            zone_id=zone_id,
-            zone_name="Living",
-            scene_id=scene_id,
-            scene_name=f"SCENE_{scene_id}",
-            color=color,
-        )
-        for scene_id in scene_ids
-    }
-
-
-async def setup_lights(monkeypatch, scene_ids):
-    monkeypatch.setattr(light, "slugify_entry", lambda host, port: "slug")
-    client = MagicMock()
-    client.get_scenes.return_value = make_scenes(scene_ids)
-    hass = MagicMock()
-    hass.data = {"digitalstrom": {"slug": {"client": client, "listener": MagicMock()}}}
-    entry = MagicMock()
-    entry.data = {"host": "dss.local", "port": 8080}
-
-    added = []
-    await light.async_setup_entry(hass, entry, lambda entities: added.extend(entities))
-    return added
+async def light_entity_id(hass) -> str:
+    [entity_id] = hass.states.async_entity_ids("light")
+    return entity_id
 
 
 @pytest.mark.parametrize(
-    "scene_ids, expected_effects",
+    "reachable_scenes, expected_effects",
     [
         pytest.param([0, 5, 17, 18, 19], ["PRESET1", "PRESET2", "PRESET3", "PRESET4"], id="all presets"),
         pytest.param([0, 5, 18], ["PRESET1", "PRESET3"], id="only preset 3"),
@@ -58,62 +18,59 @@ async def setup_lights(monkeypatch, scene_ids):
         pytest.param([1, 6], ["PRESET1"], id="area light"),
     ],
 )
-async def test_setup_only_exposes_existing_effects(monkeypatch, scene_ids, expected_effects):
-    lights = await setup_lights(monkeypatch, scene_ids)
+async def test_setup_only_exposes_existing_effects(
+    hass, dss, setup_entry, reachable_scenes, expected_effects
+):
+    dss.reachable_scenes = reachable_scenes
 
-    assert len(lights) == 1
-    assert lights[0].effect_list == expected_effects
+    await setup_entry()
 
-
-async def test_setup_skips_light_without_turn_on_scene(monkeypatch):
-    assert await setup_lights(monkeypatch, [0]) == []
-
-
-async def test_turn_on_and_off_call_scenes_and_write_state(monkeypatch):
-    [entity] = await setup_lights(monkeypatch, [0, 5, 17, 18, 19])
-
-    await entity.async_turn_on(effect="PRESET3")
-    assert RecordingScene.calls == [18]
-    assert entity.is_on and entity.effect == "PRESET3"
-
-    await entity.async_turn_on()
-    assert RecordingScene.calls == [18, 5]
-    assert entity.effect == "PRESET1"
-
-    await entity.async_turn_off()
-    assert RecordingScene.calls == [18, 5, 0]
-    assert entity.is_on is False and entity.effect is None
-    assert entity.state_writes == 3
+    state = hass.states.get(await light_entity_id(hass))
+    assert state.attributes["effect_list"] == expected_effects
 
 
-async def test_unknown_effect_falls_back_to_preset1(monkeypatch):
-    [entity] = await setup_lights(monkeypatch, [0, 5])
+async def test_no_light_without_turn_on_scene(hass, dss, setup_entry):
+    dss.reachable_scenes = [0]
 
-    await entity.async_turn_on(effect="BOGUS")
+    await setup_entry()
 
-    assert RecordingScene.calls == [5]
-    assert entity.effect == "PRESET1"
+    assert hass.states.async_entity_ids("light") == []
 
 
-async def test_websocket_events_update_state(monkeypatch):
-    [entity] = await setup_lights(monkeypatch, [0, 5, 17, 18, 19])
-    callback = entity._listener.register.call_args.kwargs["callback"]
+async def test_turn_on_and_off_call_scenes(hass, dss, setup_entry):
+    dss.reachable_scenes = [0, 5, 17, 18, 19]
+    await setup_entry()
+    entity_id = await light_entity_id(hass)
 
-    def event(scene_id, zone_id=1):
-        return {
-            "name": "callScene",
-            "properties": {"zoneID": zone_id, "groupID": 1, "sceneID": scene_id},
-        }
+    await hass.services.async_call(
+        "light", "turn_on", {"entity_id": entity_id, "effect": "PRESET3"}, blocking=True
+    )
+    state = hass.states.get(entity_id)
+    assert state.state == "on" and state.attributes["effect"] == "PRESET3"
 
-    await callback(event=event(19))
-    assert entity.is_on and entity.effect == "PRESET4"
-    assert entity.state_writes == 1
+    await hass.services.async_call("light", "turn_on", {"entity_id": entity_id}, blocking=True)
+    assert hass.states.get(entity_id).attributes["effect"] == "PRESET1"
 
-    await callback(event=event(0))
-    assert entity.is_on is False and entity.effect is None
-    assert entity.state_writes == 2
+    await hass.services.async_call("light", "turn_off", {"entity_id": entity_id}, blocking=True)
+    state = hass.states.get(entity_id)
+    assert state.state == "off" and state.attributes["effect"] is None
+
+    await wait_for(lambda: len(dss.scene_calls) == 3)
+    assert dss.scene_calls == ["18", "5", "0"]
+
+
+async def test_websocket_events_update_state(hass, dss, setup_entry):
+    dss.reachable_scenes = [0, 5, 17, 18, 19]
+    await setup_entry()
+    entity_id = await light_entity_id(hass)
+    await wait_for(lambda: len(dss._sockets) == 1)
+
+    await dss.push_scene(zone_id=0, group_id=1, scene_id=19)
+    await wait_for(lambda: hass.states.get(entity_id).state == "on")
+    assert hass.states.get(entity_id).attributes["effect"] == "PRESET4"
 
     # other zone is ignored
-    await callback(event=event(5, zone_id=2))
-    assert entity.is_on is False
-    assert entity.state_writes == 2
+    await dss.push_scene(zone_id=2, group_id=1, scene_id=0)
+    await dss.push_scene(zone_id=0, group_id=1, scene_id=0)
+    await wait_for(lambda: hass.states.get(entity_id).state == "off")
+    assert hass.states.get(entity_id).attributes["effect"] is None

@@ -1,12 +1,12 @@
-"""Tests for the cover platform, run with stubbed Home Assistant base classes."""
+"""Tests for the cover platform."""
 from unittest.mock import MagicMock
+
+from homeassistant.components.cover import CoverEntityFeature
 
 from custom_components.digitalstrom.cover import DigitalstromCover
 
 
 def test_supported_features_use_current_enum_names():
-    from custom_components.digitalstrom.cover import CoverEntityFeature
-
     cover = DigitalstromCover(
         hass=MagicMock(),
         scene_on=MagicMock(),
