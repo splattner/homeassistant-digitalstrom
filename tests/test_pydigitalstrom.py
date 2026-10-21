@@ -91,6 +91,17 @@ async def test_failed_token_activation_raises_instead_of_returning_no_token(dss)
         await handler.request_apptoken()
 
 
+async def test_failed_command_exception_says_what_failed(dss):
+    dss.fail_scene_calls = 1
+    handler = DSAppTokenHandler(dss.host, dss.port, "dssadmin", "secret")
+
+    with pytest.raises(DSCommandFailedException) as err:
+        await handler.raw_request("/json/zone/callScene?id=0&sceneNumber=5", retries=0)
+
+    # request and the message of the server, but no query string
+    assert str(err.value) == "json/zone/callScene: failed"
+
+
 async def test_server_error_exception_contains_response_text(dss):
     handler = DSAppTokenHandler(dss.host, dss.port, "dssadmin", "secret")
 

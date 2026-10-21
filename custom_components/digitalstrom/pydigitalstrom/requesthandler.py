@@ -94,7 +94,12 @@ class DSRequestHandler:
                         except json.decoder.JSONDecodeError:
                             raise DSRequestException("failed to json decode response")
                         if "ok" not in data or not data["ok"]:
-                            raise DSCommandFailedException()
+                            raise DSCommandFailedException(
+                                "{path}: {message}".format(
+                                    path=log_url.split("/", 3)[-1],
+                                    message=data.get("message", "request failed"),
+                                )
+                            )
                         return data
                 except (aiohttp.ClientError, asyncio.TimeoutError):
                     # Only retry on these Errors
