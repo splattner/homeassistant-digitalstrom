@@ -1,10 +1,19 @@
 """Tests for the power meter sensors."""
+from datetime import timedelta
+
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import async_fire_time_changed
+
+from custom_components.digitalstrom.const import DOMAIN
+
+from .conftest import wait_for
 
 
-async def update(hass, entity_id: str) -> None:
-    await hass.services.async_call(
-        "homeassistant", "update_entity", {"entity_id": entity_id}, blocking=True
-    )
+async def next_poll(hass, seconds: int = 31) -> None:
+    """let the coordinator read the meters once more"""
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=seconds))
+    await hass.async_block_till_done()
 
 
 async def test_meters_become_power_and_energy_sensors(hass, dss, setup_entry):
@@ -19,16 +28,14 @@ async def test_meters_become_power_and_energy_sensors(hass, dss, setup_entry):
     assert energy.attributes["device_class"] == "energy"
     assert energy.attributes["unit_of_measurement"] == "Wh"
     assert energy.attributes["state_class"] == "total_increasing"
-
-    await update(hass, "sensor.meter_m1_consumption")
-    await update(hass, "sensor.meter_m1_energy")
-
-    assert float(hass.states.get("sensor.meter_m1_consumption").state) == 42.0
-    assert float(hass.states.get("sensor.meter_m1_energy").state) == 1500.0
+    # values are there without waiting for the first poll
+    assert float(power.state) == 42.0
+    assert float(energy.state) == 1500.0
 
 
-async def test_every_meter_gets_its_own_sensors(hass, dss, setup_entry):
+async def test_every_meter_gets_its_own_sensors_and_values(hass, dss, setup_entry):
     dss.meters = ["m1", "m2"]
+    dss.meter_values = {"m2": {"consumption": 7.5, "energy": 99.0}}
 
     await setup_entry()
 
@@ -38,6 +45,102 @@ async def test_every_meter_gets_its_own_sensors(hass, dss, setup_entry):
         "sensor.meter_m2_consumption",
         "sensor.meter_m2_energy",
     ]
+    assert float(hass.states.get("sensor.meter_m1_consumption").state) == 42.0
+    assert float(hass.states.get("sensor.meter_m2_consumption").state) == 7.5
+    assert float(hass.states.get("sensor.meter_m2_energy").state) == 99.0
+
+
+async def test_all_meters_are_read_with_two_requests(hass, dss, setup_entry):
+    dss.meters = ["m1", "m2", "m3"]
+    await setup_entry()
+
+    assert dss.metering_requests == [
+        ("consumption", ["dsid-m1", "dsid-m2", "dsid-m3"]),
+        ("energy", ["dsid-m1", "dsid-m2", "dsid-m3"]),
+    ]
+
+    dss.metering_requests.clear()
+    await next_poll(hass)
+    await wait_for(lambda: len(dss.metering_requests) == 2)
+    assert [reading for reading, _ in dss.metering_requests] == ["consumption", "energy"]
+
+
+async def test_dsid_case_does_not_matter(hass, dss, setup_entry):
+    dss.meters = ["m1"]
+    dss.metering_uppercase_dsid = True
+
+    await setup_entry()
+
+    assert float(hass.states.get("sensor.meter_m1_consumption").state) == 42.0
+
+
+async def test_missing_readings_are_unknown(hass, dss, setup_entry):
+    dss.meters = ["m1"]
+    dss.metering_empty = True
+
+    await setup_entry()
+
+    assert hass.states.get("sensor.meter_m1_consumption").state == "unknown"
+    assert hass.states.get("sensor.meter_m1_energy").state == "unknown"
+
+
+async def test_sensors_are_unavailable_while_the_server_fails(hass, dss, setup_entry):
+    dss.meters = ["m1"]
+    await setup_entry()
+
+    dss.fail_metering = True
+    await next_poll(hass)
+    await wait_for(
+        lambda: hass.states.get("sensor.meter_m1_consumption").state == "unavailable"
+    )
+
+    dss.fail_metering = False
+    dss.meter_values = {"m1": {"consumption": 100.0, "energy": 2000.0}}
+    await next_poll(hass, seconds=62)
+    await wait_for(
+        lambda: hass.states.get("sensor.meter_m1_consumption").state == "100.0"
+    )
+
+
+async def test_failing_first_read_does_not_block_setup(hass, dss, setup_entry):
+    dss.meters = ["m1"]
+    dss.fail_metering = True
+
+    entry = await setup_entry()
+
+    assert entry.state is ConfigEntryState.LOADED
+    assert hass.states.get("sensor.meter_m1_consumption").state == "unavailable"
+    assert len(hass.states.async_entity_ids("light")) == 1  # other platforms are fine
+
+    dss.fail_metering = False
+    await next_poll(hass, seconds=31)
+    await wait_for(
+        lambda: hass.states.get("sensor.meter_m1_consumption").state == "42.0"
+    )
+
+
+async def test_rejected_token_while_polling_starts_reauth(hass, dss, setup_entry):
+    dss.meters = ["m1"]
+    entry = await setup_entry()
+    assert not hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+
+    dss.reject_app_token = True
+    entry.runtime_data.client._last_request = None  # make it log in again
+    await next_poll(hass)
+    await wait_for(lambda: hass.config_entries.flow.async_progress_by_handler(DOMAIN))
+
+    [flow] = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+    assert flow["context"]["source"] == "reauth"
+
+
+async def test_scan_interval_option_sets_the_poll_interval(hass, dss, setup_entry):
+    dss.meters = ["m1"]
+    await setup_entry(scan_interval=120)
+    coordinator = hass.data["entity_components"]["sensor"].get_entity(
+        "sensor.meter_m1_consumption"
+    ).coordinator
+
+    assert coordinator.update_interval == timedelta(seconds=120)
 
 
 async def test_no_meters_no_sensors(hass, dss, setup_entry):

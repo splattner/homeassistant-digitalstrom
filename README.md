@@ -49,7 +49,7 @@ For now, you have to [add the repository yourself](https://hacs.netlify.com/usag
 
 ## Are there any limitations?
 
-Yes. Based on the nature of how digitalSTROM servers communicate with single devices, a digitalSTROM installation can easily be overwhelmed with too many commands. It is therefore recommended to not issue more than 2-3 commands per second. This integration takes care of that by handling one command after the other. The default delay is 500ms. It can be changed when setting up the integration and later in the integration's options (Configure).
+Yes. Based on the nature of how digitalSTROM servers communicate with single devices, a digitalSTROM installation can easily be overwhelmed with too many commands. It is therefore recommended to not issue more than 2-3 commands per second. This integration takes care of that by handling one command after the other. The default delay is 500ms. It can be changed when setting up the integration and later in the integration's options (Configure). The power meters are read with two requests per interval, no matter how many meters there are; the interval is an option as well.
 
 
 ## Development

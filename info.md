@@ -39,7 +39,7 @@ Every power meter.
 
 ## Options and authentication
 
-The delay between commands can be changed at any time in the integration's options. If the app token is missing or was revoked in the digitalSTROM server, Home Assistant asks you to authenticate again; your password is only used to request a new token and is not stored.
+The delay between commands and the interval for reading the power meters (default 30 seconds) can be changed at any time in the integration's options. If the app token is missing or was revoked in the digitalSTROM server, Home Assistant asks you to authenticate again; your password is only used to request a new token and is not stored.
 
 ## BREAKING CHANGES
 
