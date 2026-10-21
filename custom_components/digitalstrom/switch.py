@@ -1,43 +1,28 @@
 # -*- coding: UTF-8 -*-
 import logging
-from typing import Callable, Union
+from typing import Union
 
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_ON, CONF_HOST, CONF_PORT
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.const import STATE_ON
 from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.helpers.typing import ConfigType
 from homeassistant.core import HomeAssistant
 from .pydigitalstrom.client import DSClient
 from .pydigitalstrom import constants as dsconst
 from .pydigitalstrom.devices.scene import DSScene, DSColorScene
 from .pydigitalstrom.websocket import DSWebsocketEventListener
 
+from . import DigitalstromConfigEntry
 from .const import DOMAIN
-from .util import slugify_entry
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
-    async_add_devices: Callable,
-    discovery_info: dict = None,
-):
-    """Platform uses config entry setup."""
-    pass
-
-
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: Callable
+    hass: HomeAssistant, entry: DigitalstromConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    entry_slug: str = slugify_entry(
-        host=entry.data[CONF_HOST], port=entry.data[CONF_PORT]
-    )
-
-    client: DSClient = hass.data[DOMAIN][entry_slug]["client"]
-    listener: DSWebsocketEventListener = hass.data[DOMAIN][entry_slug]["listener"]
+    client: DSClient = entry.runtime_data.client
+    listener: DSWebsocketEventListener = entry.runtime_data.listener
     devices: list = []
     scenes: dict = client.get_scenes()
 
@@ -94,9 +79,7 @@ class DigitalstromSwitch(RestoreEntity, SwitchEntity):
             self._state = True
         super().__init__(*args, **kwargs)
 
-        self.register_callback()
-
-    def register_callback(self) -> None:
+    def _register_callback(self) -> None:
         async def event_callback(event: dict):
             # sanity checks
             if "name" not in event:
@@ -129,7 +112,7 @@ class DigitalstromSwitch(RestoreEntity, SwitchEntity):
                 self._state = False
                 self.async_write_ha_state()
 
-        self._listener.register(callback=event_callback)
+        return self._listener.register(callback=event_callback)
 
     @property
     def name(self) -> str:
@@ -159,6 +142,7 @@ class DigitalstromSwitch(RestoreEntity, SwitchEntity):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
+        self.async_on_remove(self._register_callback())
         state: bool = await self.async_get_last_state()
         if not state:
             return

@@ -1,9 +1,15 @@
 """Config flow to configure the digitalSTROM component."""
-from urllib.parse import urlparse
+from collections.abc import Mapping
+from typing import Any
+
 import voluptuous as vol
 
-from homeassistant import config_entries
-
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.const import (
     CONF_HOST,
     CONF_PORT,
@@ -13,52 +19,102 @@ from homeassistant.const import (
     CONF_TOKEN,
 )
 from homeassistant.core import callback
-from homeassistant.helpers import config_validation
+from homeassistant.helpers.selector import (
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
+)
+
+from . import get_delay
+from .pydigitalstrom.apptokenhandler import DSAppTokenHandler
+from .pydigitalstrom.exceptions import DSAuthenticationException, DSException
 
 from .const import (
     DOMAIN,
-    HOST_FORMAT,
-    DIGITALSTROM_MANUFACTURERS,
     CONF_DELAY,
     DEFAULT_ALIAS,
     DEFAULT_HOST,
     DEFAULT_PORT,
     DEFAULT_DELAY,
     DEFAULT_USERNAME,
+    MAX_DELAY,
+    MIN_DELAY,
     TITLE_FORMAT,
 )
-from .util import slugify_entry
+from .util import get_session, slugify_entry
+
+PASSWORD_SELECTOR = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
+DELAY_VALIDATOR = vol.All(vol.Coerce(int), vol.Range(min=MIN_DELAY, max=MAX_DELAY))
 
 
-@callback
-def configured_devices(hass):
-    """return a set of all configured instances"""
-    configuered_devices = list()
-    for entry in hass.config_entries.async_entries(DOMAIN):
-        configuered_devices.append(
-            slugify_entry(host=entry.data[CONF_HOST], port=entry.data[CONF_PORT])
-        )
-    return configuered_devices
+def _error_key(err: DSException) -> str:
+    if isinstance(err, DSAuthenticationException):
+        return "invalid_auth"
+    return "cannot_connect"
 
 
-@callback
-def initialized_devices(hass):
-    """return a set of all initialized instances"""
-    initialized_devices = list()
-    for slug in hass.data.get(DOMAIN, {}).keys():
-        initialized_devices.append(slug)
-    return initialized_devices
-
-
-class DigitalStromConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class DigitalStromConfigFlow(ConfigFlow, domain=DOMAIN):
     """handle a digitalSTROM config flow"""
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
-    discovered_devices = []
 
-    def __init__(self, *args, **kwargs):
-        self.device_config = {
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> "DigitalStromOptionsFlow":
+        return DigitalStromOptionsFlow()
+
+    async def _async_request_token(
+        self, host: str, port: int, username: str, password: str
+    ) -> str:
+        """get an app token from the server and register it"""
+        handler = DSAppTokenHandler(
+            host=host,
+            port=port,
+            username=username,
+            password=password,
+            session=get_session(self.hass),
+        )
+        return await handler.request_apptoken()
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """handle the start of the config flow"""
+        errors = {}
+
+        if user_input is not None:
+            # check if server is already known
+            await self.async_set_unique_id(
+                slugify_entry(host=user_input[CONF_HOST], port=user_input[CONF_PORT])
+            )
+            self._abort_if_unique_id_configured()
+
+            try:
+                token = await self._async_request_token(
+                    host=user_input[CONF_HOST],
+                    port=user_input[CONF_PORT],
+                    username=user_input[CONF_USERNAME],
+                    password=user_input[CONF_PASSWORD],
+                )
+            except DSException as err:
+                errors["base"] = _error_key(err)
+            else:
+                return self.async_create_entry(
+                    title=TITLE_FORMAT.format(
+                        alias=user_input[CONF_ALIAS],
+                        host=user_input[CONF_HOST],
+                        port=user_input[CONF_PORT],
+                    ),
+                    data={
+                        CONF_TOKEN: token,
+                        CONF_HOST: user_input[CONF_HOST],
+                        CONF_PORT: user_input[CONF_PORT],
+                        CONF_ALIAS: user_input[CONF_ALIAS],
+                        CONF_DELAY: user_input[CONF_DELAY],
+                    },
+                )
+
+        defaults = user_input or {
             CONF_HOST: DEFAULT_HOST,
             CONF_PORT: DEFAULT_PORT,
             CONF_USERNAME: DEFAULT_USERNAME,
@@ -66,75 +122,83 @@ class DigitalStromConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_ALIAS: DEFAULT_ALIAS,
             CONF_DELAY: DEFAULT_DELAY,
         }
-        super().__init__(*args, **kwargs)
-
-    async def async_step_user(self, user_input=None):
-        """handle the start of the config flow"""
-        errors = {}
-
-        # validate input
-        if user_input is not None:
-            from .pydigitalstrom.apptokenhandler import DSAppTokenHandler
-            from .pydigitalstrom.exceptions import DSException
-
-            # build client config
-            self.device_config = user_input.copy()
-
-            # get device identifier slug
-            device_slug = slugify_entry(
-                host=self.device_config[CONF_HOST], port=self.device_config[CONF_PORT]
-            )
-
-            # check if server is already known
-            if device_slug in configured_devices(self.hass):
-                errors["base"] = "already_configured"
-            else:
-                # try to get an app token from the server and register it
-                handler = DSAppTokenHandler(
-                    host=self.device_config[CONF_HOST],
-                    port=self.device_config[CONF_PORT],
-                    username=self.device_config[CONF_USERNAME],
-                    password=self.device_config[CONF_PASSWORD],
-                )
-                try:
-                    token = await handler.request_apptoken()
-                except DSException:
-                    errors["base"] = "communication_error"
-                else:
-                    return self.async_create_entry(
-                        title=TITLE_FORMAT.format(
-                            alias=self.device_config[CONF_ALIAS],
-                            host=self.device_config[CONF_HOST],
-                            port=self.device_config[CONF_PORT],
-                        ),
-                        data={
-                            CONF_TOKEN: token,
-                            CONF_HOST: self.device_config[CONF_HOST],
-                            CONF_PORT: self.device_config[CONF_PORT],
-                            CONF_ALIAS: self.device_config[CONF_ALIAS],
-                            CONF_DELAY: self.device_config[CONF_DELAY],
-                        },
-                    )
-
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_HOST, default=self.device_config[CONF_HOST]): str,
-                    vol.Required(CONF_PORT, default=self.device_config[CONF_PORT]): int,
+                    vol.Required(CONF_HOST, default=defaults[CONF_HOST]): str,
+                    vol.Required(CONF_PORT, default=defaults[CONF_PORT]): int,
+                    vol.Required(CONF_USERNAME, default=defaults[CONF_USERNAME]): str,
                     vol.Required(
-                        CONF_USERNAME, default=self.device_config[CONF_USERNAME]
-                    ): str,
-                    vol.Required(
-                        CONF_PASSWORD, default=self.device_config[CONF_PASSWORD]
-                    ): str,
-                    vol.Required(
-                        CONF_ALIAS, default=self.device_config[CONF_ALIAS]
-                    ): str,
-                    vol.Required(
-                        CONF_DELAY, default=self.device_config[CONF_DELAY]
-                    ): int,
+                        CONF_PASSWORD, default=defaults[CONF_PASSWORD]
+                    ): PASSWORD_SELECTOR,
+                    vol.Required(CONF_ALIAS, default=defaults[CONF_ALIAS]): str,
+                    vol.Required(CONF_DELAY, default=defaults[CONF_DELAY]): DELAY_VALIDATOR,
                 }
             ),
             errors=errors,
+        )
+
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """the app token is missing or was rejected by the server"""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """ask for the credentials again and request a new app token"""
+        entry = self._get_reauth_entry()
+        errors = {}
+
+        if user_input is not None:
+            try:
+                token = await self._async_request_token(
+                    host=entry.data[CONF_HOST],
+                    port=entry.data[CONF_PORT],
+                    username=user_input[CONF_USERNAME],
+                    password=user_input[CONF_PASSWORD],
+                )
+            except DSException as err:
+                errors["base"] = _error_key(err)
+            else:
+                return self.async_update_reload_and_abort(
+                    entry, data_updates={CONF_TOKEN: token}
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_USERNAME,
+                        default=(user_input or {}).get(CONF_USERNAME, DEFAULT_USERNAME),
+                    ): str,
+                    vol.Required(CONF_PASSWORD): PASSWORD_SELECTOR,
+                }
+            ),
+            description_placeholders={"host": entry.data[CONF_HOST]},
+            errors=errors,
+        )
+
+
+class DigitalStromOptionsFlow(OptionsFlow):
+    """handle the options of a digitalSTROM server"""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_DELAY, default=get_delay(self.config_entry)
+                    ): DELAY_VALIDATOR,
+                }
+            ),
         )
